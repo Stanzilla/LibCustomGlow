@@ -3,6 +3,7 @@ local MINOR_VERSION = 7
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub.") end
 local lib, oldversion = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
+local Masque = LibStub("Masque", true)
 
 local textureList = {
  ["empty"] = [[Interface\AdventureMap\BrokenIsles\AM_29]],
@@ -217,7 +218,7 @@ function lib.PixelGlow_Start(r,color,N,frequency,length,th,xOffset,yOffset,borde
 	local width,height = r:GetSize()
     length = length or math.floor((width+height)*(2/N-0.1))
     length = min(length,min(width,height))
-    th = th or 2
+    th = th or 1
     xOffset = xOffset or 0
     yOffset = yOffset or 0    
     key = key or ""
@@ -235,7 +236,7 @@ function lib.PixelGlow_Start(r,color,N,frequency,length,th,xOffset,yOffset,borde
     f.masks[1]:SetPoint("TOPLEFT",f,"TOPLEFT",th,-th)
     f.masks[1]:SetPoint("BOTTOMRIGHT",f,"BOTTOMRIGHT",-th,th)
     
-    if border then
+    if not(border==false) then
         if not f.masks[2] then
             f.masks[2] = GlowMaskPool:Acquire()
             f.masks[2]:SetTexture(textureList.empty, "CLAMPTOWHITE","CLAMPTOWHITE")
@@ -576,6 +577,7 @@ function lib.ButtonGlow_Start(r,color,frequency)
 				f[texture]:SetDesaturated(nil)
 				f[texture]:SetVertexColor(1,1,1)
 				f[texture]:SetAlpha(f[texture]:GetAlpha()/(f.color and f.color[4] or 1))
+				updateAlphaAnim(f, 1)
 			end
 			f.color = false
 		else
@@ -583,6 +585,7 @@ function lib.ButtonGlow_Start(r,color,frequency)
 				f[texture]:SetDesaturated(1)
 				f[texture]:SetVertexColor(color[1],color[2],color[3])
 				f[texture]:SetAlpha(f[texture]:GetAlpha()/(f.color and f.color[4] or 1)*color[4])
+				updateAlphaAnim(f,color and color[4] or 1)
 			end
 			f.color = color
 		end
