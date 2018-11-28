@@ -9,7 +9,6 @@ local textureList = {
  ["empty"] = [[Interface\AdventureMap\BrokenIsles\AM_29]],
  ["white"] = [[Interface\BUTTONS\WHITE8X8]],
  ["shine"] = [[Interface\Artifacts\Artifacts]]
-
  }
 
 function lib.RegisterTextures(texture,id)
