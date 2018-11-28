@@ -152,9 +152,12 @@ local  pUpdate = function(self,elapsed)
     local progress = self.timer
     local width,height = self:GetSize()
     if width ~= self.info.width or height ~= self.info.height then
+        local perimeter = 2*(width+height)
+		if not (perimeter>0) then
+			return
+		end
         self.info.width = width
         self.info.height = height
-        local perimeter = 2*(width+height)
         self.info.pTLx = {
             [0] = (height+self.info.length/2)/perimeter,
             [1] = (height+width+self.info.length/2)/perimeter,
@@ -208,7 +211,11 @@ function lib.PixelGlow_Start(r,color,N,frequency,length,th,xOffset,yOffset,borde
     if not color then
         color = {0.95,0.95,0.32,1}
     end
-    N = N or 8
+    
+	if not(N and N>0) then
+		N = 8
+	end
+	
     local period
     if frequency then
         if not(frequency>0 or frequency<0) then
@@ -342,7 +349,11 @@ function lib.AutoCastGlow_Start(r,color,N,frequency,scale,xOffset,yOffset,key)
 	if not color then
         color = {0.95,0.95,0.32,1}
     end
-    N = N or 4
+	
+	if not(N and N>0) then
+		N = 4
+	end
+	
     local period
     if frequency then
         if not(frequency>0 or frequency<0) then
