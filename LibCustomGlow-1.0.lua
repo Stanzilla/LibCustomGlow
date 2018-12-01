@@ -86,8 +86,8 @@ local function addFrameAndTex(r,color,name,key,N,xOffset,yOffset,texture,texCoor
         r[name..key].name = name..key
     end
     local f = r[name..key]
-    f:SetPoint("TOPLEFT",r,"TOPLEFT",-xOffset,yOffset)
-    f:SetPoint("BOTTOMRIGHT",r,"BOTTOMRIGHT",xOffset,-yOffset)
+    f:SetPoint("TOPLEFT",r,"TOPLEFT",-xOffset,yOffset+0.1)
+    f:SetPoint("BOTTOMRIGHT",r,"BOTTOMRIGHT",xOffset-0.1,-yOffset-0.1)
     f:Show()
 
     if not f.textures then
