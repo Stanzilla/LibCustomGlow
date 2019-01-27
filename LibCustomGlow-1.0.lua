@@ -1,5 +1,5 @@
 local MAJOR_VERSION = "LibCustomGlow-1.0"
-local MINOR_VERSION = 8
+local MINOR_VERSION = 11
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub.") end
 local lib, oldversion = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
@@ -606,6 +606,10 @@ function lib.ButtonGlow_Start(r,color,frequency)
         f:SetSize(width * 1.4, height * 1.4)
         f:SetPoint("TOPLEFT", r, "TOPLEFT", -width * 0.2, height * 0.2)
         f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", width * 0.2, -height * 0.2)
+        f.spark:SetSize(width, height)
+        f.innerGlow:SetSize(width / 2, height / 2)
+        f.outerGlow:SetSize(width * 2, height * 2)
+        f.ants:SetSize(width * 0.85, height * 0.85)
         if f.animOut:IsPlaying() then
             f.animOut:Stop()
             f.animIn:Play()
