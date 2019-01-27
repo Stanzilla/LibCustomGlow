@@ -602,6 +602,10 @@ function lib.ButtonGlow_Start(r,color,frequency)
     end
     if r._ButtonGlow then
         local f = r._ButtonGlow
+        local width,height = r:GetSize()
+        f:SetSize(width * 1.4, height * 1.4)
+        f:SetPoint("TOPLEFT", r, "TOPLEFT", -width * 0.2, height * 0.2)
+        f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", width * 0.2, -height * 0.2)
         if f.animOut:IsPlaying() then
             f.animOut:Stop()
             f.animIn:Play()
