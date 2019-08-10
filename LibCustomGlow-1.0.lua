@@ -1,7 +1,3 @@
---[[
-This library contains work of Hendrick "nevcairiel" Leppkes
-https://www.wowace.com/projects/libbuttonglow-1-0
-]]
 local MAJOR_VERSION = "LibCustomGlow-1.0"
 local MINOR_VERSION = 14
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub.") end
@@ -81,15 +77,16 @@ end
 local GlowFramePool = CreateFramePool("Frame",GlowParent,nil,FramePoolResetter)
 lib.GlowFramePool = GlowFramePool
 
-local function addFrameAndTex(r,color,name,key,N,xOffset,yOffset,texture,texCoord,desaturated)
+local function addFrameAndTex(r,color,name,key,N,xOffset,yOffset,texture,texCoord,desaturated,frameLevel)
     key = key or ""
+	frameLevel = frameLevel or 8
     if not r[name..key] then
         r[name..key] = GlowFramePool:Acquire()
         r[name..key]:SetParent(r)
-        r[name..key]:SetFrameLevel(r:GetFrameLevel()+8)
         r[name..key].name = name..key
     end
     local f = r[name..key]
+	f:SetFrameLevel(r:GetFrameLevel()+frameLevel)
     f:SetPoint("TOPLEFT",r,"TOPLEFT",-xOffset+0.05,yOffset+0.05)
     f:SetPoint("BOTTOMRIGHT",r,"BOTTOMRIGHT",xOffset,-yOffset+0.05)
     f:Show()
@@ -208,7 +205,7 @@ local  pUpdate = function(self,elapsed)
     end
 end
 
-function lib.PixelGlow_Start(r,color,N,frequency,length,th,xOffset,yOffset,border,key)
+function lib.PixelGlow_Start(r,color,N,frequency,length,th,xOffset,yOffset,border,key,frameLevel)
     if not r then
         return
     end
@@ -238,7 +235,7 @@ function lib.PixelGlow_Start(r,color,N,frequency,length,th,xOffset,yOffset,borde
     yOffset = yOffset or 0
     key = key or ""
 
-    addFrameAndTex(r,color,"_PixelGlow",key,N,xOffset,yOffset,textureList.white,{0,1,0,1},nil)
+    addFrameAndTex(r,color,"_PixelGlow",key,N,xOffset,yOffset,textureList.white,{0,1,0,1},nil,frameLevel)
     local f = r["_PixelGlow"..key]
     if not f.masks then
         f.masks = {}
@@ -345,7 +342,7 @@ local function acUpdate(self,elapsed)
     end
 end
 
-function lib.AutoCastGlow_Start(r,color,N,frequency,scale,xOffset,yOffset,key)
+function lib.AutoCastGlow_Start(r,color,N,frequency,scale,xOffset,yOffset,key,frameLevel)
     if not r then
         return
     end
@@ -373,7 +370,7 @@ function lib.AutoCastGlow_Start(r,color,N,frequency,scale,xOffset,yOffset,key)
     yOffset = yOffset or 0
     key = key or ""
 
-    addFrameAndTex(r,color,"_AutoCastGlow",key,N*4,xOffset,yOffset,textureList.shine,{0.8115234375,0.9169921875,0.8798828125,0.9853515625},true)
+    addFrameAndTex(r,color,"_AutoCastGlow",key,N*4,xOffset,yOffset,textureList.shine,{0.8115234375,0.9169921875,0.8798828125,0.9853515625},true, frameLevel)
     local f = r["_AutoCastGlow"..key]
     local sizes = {7,6,5,4}
     for k,size in pairs(sizes) do
@@ -593,7 +590,7 @@ end
 
 local ButtonGlowTextures = {["spark"] = true,["innerGlow"] = true,["innerGlowOver"] = true,["outerGlow"] = true,["outerGlowOver"] = true,["ants"] = true}
 
-function lib.ButtonGlow_Start(r,color,frequency)
+function lib.ButtonGlow_Start(r,color,frequency,frameLevel)
     if not r then
         return
     end
@@ -607,6 +604,7 @@ function lib.ButtonGlow_Start(r,color,frequency)
     if r._ButtonGlow then
         local f = r._ButtonGlow
         local width,height = r:GetSize()
+        f:SetFrameLevel(r:GetFrameLevel()+frameLevel)
         f:SetSize(width*1.4 , height*1.4)
         f:SetPoint("TOPLEFT", r, "TOPLEFT", -width * 0.2, height * 0.2)
         f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", width * 0.2, -height * 0.2)
@@ -645,7 +643,7 @@ function lib.ButtonGlow_Start(r,color,frequency)
         r._ButtonGlow = f
         local width,height = r:GetSize()
         f:SetParent(r)
-        f:SetFrameLevel(r:GetFrameLevel()+8)
+        f:SetFrameLevel(r:GetFrameLevel()+frameLevel)
         f:SetSize(width * 1.4, height * 1.4)
         f:SetPoint("TOPLEFT", r, "TOPLEFT", -width * 0.2, height * 0.2)
         f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", width * 0.2, -height * 0.2)
