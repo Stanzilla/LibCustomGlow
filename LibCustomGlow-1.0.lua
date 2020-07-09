@@ -6,7 +6,7 @@ https://www.wowace.com/projects/libbuttonglow-1-0
 -- luacheck: globals CreateFromMixins ObjectPoolMixin CreateTexturePool CreateFramePool
 
 local MAJOR_VERSION = "LibCustomGlow-1.0"
-local MINOR_VERSION = 15
+local MINOR_VERSION = 16
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub.") end
 local lib, oldversion = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
@@ -120,6 +120,2312 @@ local function addFrameAndTex(r,color,name,key,N,xOffset,yOffset,texture,texCoor
     end
 end
 
+
+local hsvFrame = CreateFrame("Colorselect")
+-- HSV transition, for a much prettier color transition in many cases
+-- see http://www.wowinterface.com/forums/showthread.php?t=48236
+local function GetHSVTransition(perc, c1, c2)
+  --get hsv color for colorA
+  hsvFrame:SetColorRGB(c1[1], c1[2], c1[3])
+  local h1, s1, v1 = hsvFrame:GetColorHSV() -- hue, saturation, value
+  --get hsv color for colorB
+  hsvFrame:SetColorRGB(c2[1], c2[2], c2[3])
+  local h2, s2, v2 = hsvFrame:GetColorHSV() -- hue, saturation, value
+  -- find the shortest arc through the color circle, then interpolate
+  local diff = h2 - h1
+  if diff < -180 then
+    diff = diff + 360
+  elseif diff > 180 then
+    diff = diff - 360
+  end
+
+  local h3 = (h1 + perc * diff) % 360
+  local s3 = s1 - ( s1 - s2 ) * perc
+  local v3 = v1 - ( v1 - v2 ) * perc
+  --get the RGB values of the new color
+  hsvFrame:SetColorHSV(h3, s3, v3)
+  local r, g, b = hsvFrame:GetColorRGB()
+  --interpolate alpha
+  local a = c1[4] - ( c1[4] - c2[4] ) * perc
+  --return the new color
+  return {r, g, b, a}
+end
+
+local function SetGradA(texture, direction, c1, c2)
+	texture:SetGradientAlpha(direction, c1[1], c1[2], c1[3], c1[4], c2[1], c2[2], c2[3], c2[4])
+end
+
+---- Tails Funcitons ------------------------------------------------------------------------------------------------
+
+local function BorderGradientCorners(info, elapsed)
+	local c1, c2, c3, c4, p1, p2, p3, p4
+	local g = info.gradient
+	local gN = #g
+	local gProg = info.gProgress or 0
+	gProg = (gProg + elapsed * info.gFrequency)%1
+	info.gProgress = gProg
+	
+	p1 = (gProg + 0.001)%1
+	p2 = (gProg + info.width / (info.width + info.height) / 2)%1
+	p3 = (gProg + 0.5) %1
+	p4 = (gProg + 0.5 + info.width / (info.width + info.height) / 2)%1
+	
+	c1 = GetHSVTransition ((p1 * gN) % 1 , g[ceil(p1 * gN)], g[ceil(p1 * gN) % gN + 1])
+	c2 = GetHSVTransition ((p2 * gN) % 1 , g[ceil(p2 * gN)], g[ceil(p2 * gN) % gN + 1])
+	c3 = GetHSVTransition ((p3 * gN) % 1 , g[ceil(p3 * gN)], g[ceil(p3 * gN) % gN + 1])
+	c4 = GetHSVTransition ((p4 * gN) % 1 , g[ceil(p4 * gN)], g[ceil(p4 * gN) % gN + 1])
+	return c1, c2, c3, c4
+end
+
+local function BorderSet4LinesCenter(f, update)
+	local inf = f.info
+	local tails = inf.tail.list
+	if not(update) then 
+		for _, v in pairs(tails) do
+			v:ClearAllPoints()
+		end
+		if inf.mirror then
+				tails[1]:SetPoint("TOP", f, "TOP")
+				tails[2]:SetPoint("RIGHT", f, "RIGHT")
+				tails[3]:SetPoint("BOTTOM", f, "BOTTOM")
+				tails[4]:SetPoint("LEFT", f, "LEFT")
+				
+				tails[5]:Hide()
+				tails[6]:Hide()
+				tails[7]:Hide()
+				tails[8]:Hide()		
+
+				tails[1]:SetHeight(inf.th)
+				tails[2]:SetWidth(inf.th)
+				tails[3]:SetHeight(inf.th)
+				tails[4]:SetWidth(inf.th)				
+		else
+			if inf.clockwise then
+				tails[1]:SetPoint("TOPRIGHT", f, "TOP")
+				tails[2]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+				tails[3]:SetPoint("TOPLEFT", f, "LEFT")
+				tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+				tails[5]:SetPoint("BOTTOMLEFT", f, "BOTTOM")
+				tails[6]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+				tails[7]:SetPoint("BOTTOMRIGHT", f, "RIGHT")
+				tails[8]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+			else
+				tails[1]:SetPoint("TOPLEFT", f, "TOP")
+				tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+				tails[3]:SetPoint("TOPRIGHT", f, "RIGHT")
+				tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+				tails[5]:SetPoint("BOTTOMRIGHT", f, "BOTTOM")
+				tails[6]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+				tails[7]:SetPoint("BOTTOMLEFT", f, "LEFT")
+				tails[8]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+			end
+
+			tails[5]:Show()
+			tails[6]:Show()
+			tails[7]:Show()
+			tails[8]:Show()
+			
+			tails[1]:SetHeight(inf.th)
+			tails[2]:SetWidth(inf.th)
+			tails[3]:SetWidth(inf.th)
+			tails[4]:SetHeight(inf.th)
+			tails[5]:SetHeight(inf.th)
+			tails[6]:SetWidth(inf.th)
+			tails[7]:SetWidth(inf.th)
+			tails[8]:SetHeight(inf.th)
+		end
+	end	
+	
+	local width, height = f:GetSize()
+	if inf.mirror then
+		tails[1]:SetWidth(width)
+		tails[2]:SetHeight(height - inf.th * 2)
+		tails[3]:SetWidth(width)
+		tails[4]:SetHeight(height - inf.th * 2)
+	else
+		tails[1]:SetWidth(width / 2)
+		tails[2]:SetHeight(height / 2 - inf.th)
+		tails[3]:SetHeight(height / 2)
+		tails[4]:SetWidth(width / 2 - inf.th)
+		tails[5]:SetWidth(width / 2)
+		tails[6]:SetHeight(height / 2 - inf.th)
+		tails[7]:SetHeight(height / 2)
+		tails[8]:SetWidth(width / 2 - inf.th)
+	end
+end
+
+local function BorderUpdate4LinesCenter(f, progress)
+	local inf = f.info
+	local tails = inf.tail.list
+	local oldProgress = inf.tail.old
+	
+	if inf.mirror then
+		local newW = inf.width * (1 - progress)
+		local newH = (inf.height - inf.th * 2) * (1 - progress)
+		tails[1]:SetWidth(newW)
+		tails[2]:SetHeight(newH)
+		tails[3]:SetWidth(newW)
+		tails[4]:SetHeight(newH)
+	else	
+		local cornerP = inf.width / (inf.width + inf.height)
+		local updt
+		if progress < cornerP then
+			if oldProgress > cornerP or oldProgress <= 0 then
+				tails[3]:Show()
+				tails[4]:Show()
+				tails[7]:Show()
+				tails[8]:Show()				
+				updt = true
+			else
+				local stageProg = 1 - progress / cornerP
+				tails[4]:SetWidth(stageProg * (inf.width / 2 - inf.th))
+				tails[8]:SetWidth(stageProg * (inf.width / 2 - inf.th))
+			end
+		else
+			if oldProgress >= 1 or oldProgress < cornerP then
+				tails[3]:Show()
+				tails[4]:Hide()
+				tails[7]:Show()
+				tails[8]:Hide()
+				updt = true
+			else
+				local stageProg = (1 - progress) / (1 - cornerP)
+				tails[3]:SetHeight(stageProg * (inf.height / 2))
+				tails[7]:SetHeight(stageProg * (inf.height / 2))
+			end
+		end
+		
+		if progress < (1 - cornerP) then
+			if oldProgress > (1 - cornerP) or oldProgress <= 0 then
+				tails[1]:Show()
+				tails[2]:Show()
+				tails[5]:Show()
+				tails[6]:Show()
+				updt = true
+			else
+				local stageProg = 1 - progress / (1 - cornerP)
+				tails[2]:SetHeight(stageProg * (inf.height / 2 - inf.th))
+				tails[6]:SetHeight(stageProg * (inf.height / 2 - inf.th))
+			end
+		else
+			if oldProgress >= 1 or oldProgress < (1 - cornerP) then
+				tails[1]:Show()
+				tails[2]:Hide()
+				tails[5]:Show()
+				tails[6]:Hide()
+				updt = true
+			else
+				local stageProg = (1 - progress) / cornerP
+				tails[1]:SetWidth(stageProg * (inf.width / 2))
+				tails[5]:SetWidth(stageProg * (inf.width / 2))
+			end
+		end
+		
+		if updt then
+				BorderSet4LinesCenter(f, true)
+				if progress < cornerP then
+					local stageProg = 1 - progress / cornerP
+					tails[4]:SetWidth(stageProg * (inf.width / 2- inf.th))
+					tails[8]:SetWidth(stageProg * (inf.width / 2- inf.th))
+				else
+					local stageProg = (1 - progress) / (1 - cornerP)
+					tails[3]:SetHeight(stageProg * (inf.height / 2))
+					tails[7]:SetHeight(stageProg * (inf.height / 2))
+				end
+				
+				if progress < (1 - cornerP) then
+					local stageProg = 1 - progress / (1 - cornerP)
+					tails[2]:SetHeight(stageProg * (inf.height / 2 - inf.th))
+					tails[6]:SetHeight(stageProg * (inf.height / 2 - inf.th))
+				else
+					local stageProg = (1 - progress) / cornerP
+					tails[1]:SetWidth(stageProg * (inf.width / 2))
+					tails[5]:SetWidth(stageProg * (inf.width / 2))
+				end
+		end	
+	end
+	inf.tail.old = progress
+end
+
+local function BorderGradient4LinesCenter(f, progress, elapsed)
+	local inf = f.info
+	local tails = inf.tail.list
+	local c1, c2, c3, c4 = BorderGradientCorners(inf, elapsed)
+	
+	
+	if inf.mirror then
+		local c1x1 = GetHSVTransition(progress / 2, c2, c1)
+		local c1x2 = GetHSVTransition(progress / 2, c1, c2)
+		local c2x1 = GetHSVTransition(progress / 2, c4, c1)
+		local c2x2 = GetHSVTransition(progress / 2, c1, c4)
+		local c3x1 = GetHSVTransition(progress / 2, c3, c4)
+		local c3x2 = GetHSVTransition(progress / 2, c4, c3)
+		local c4x1 = GetHSVTransition(progress / 2, c3, c2)
+		local c4x2 = GetHSVTransition(progress / 2, c2, c3)
+		
+		SetGradA(tails[1], "HORIZONTAL", c1x1, c1x2)
+		SetGradA(tails[2], "VERTICAL", c2x1, c2x2)
+		SetGradA(tails[3], "HORIZONTAL", c3x1, c3x2)
+		SetGradA(tails[4], "VERTICAL", c4x1, c4x2)
+	
+	else
+		local c12 = GetHSVTransition(0.5, c1, c2)
+		local c23 = GetHSVTransition(0.5, c2, c3)
+		local c34 = GetHSVTransition(0.5, c3, c4)
+		local c41 = GetHSVTransition(0.5, c4, c1)
+		
+		local cornerP = inf.height / (inf.width + inf.height)
+		if inf.clockwise then
+			if progress < cornerP then
+				local c2x = GetHSVTransition(progress, c23, c2)
+				local c6x = GetHSVTransition(progress, c41, c4)
+				SetGradA(tails[1], "HORIZONTAL", c2, c12)
+				SetGradA(tails[2], "VERTICAL", c2x, c2)
+				SetGradA(tails[5], "HORIZONTAL", c34, c4)
+				SetGradA(tails[6], "VERTICAL", c4, c6x)
+			else
+				local c1x = GetHSVTransition(progress, c2, c12)
+				local c5x = GetHSVTransition(progress, c4, c34)
+				SetGradA(tails[1], "HORIZONTAL", c1x, c12)
+				SetGradA(tails[5], "HORIZONTAL", c34, c5x)
+			end
+			if progress < 1 - cornerP then
+				local c4x = GetHSVTransition(progress, c34, c3)
+				local c8x = GetHSVTransition(progress, c12, c1)
+				SetGradA(tails[3], "VERTICAL", c3, c23)
+				SetGradA(tails[4], "HORIZONTAL", c3, c4x)
+				SetGradA(tails[7], "VERTICAL", c41, c1)
+				SetGradA(tails[8], "HORIZONTAL", c8x, c1)
+			else
+				local c3x = GetHSVTransition(progress, c3, c34)
+				local c7x = GetHSVTransition(progress, c1, c41)
+				SetGradA(tails[3], "VERTICAL", c3x, c23)
+				SetGradA(tails[7], "VERTICAL", c41, c7x)
+			end
+		else
+			if progress < cornerP then
+				local c2x = GetHSVTransition(progress, c41, c1)
+				local c6x = GetHSVTransition(progress, c23, c3)
+				SetGradA(tails[1], "HORIZONTAL", c12, c1)
+				SetGradA(tails[2], "VERTICAL", c2x, c1)
+				SetGradA(tails[5], "HORIZONTAL", c3, c34)
+				SetGradA(tails[6], "VERTICAL", c3, c6x)
+			else
+				local c1x = GetHSVTransition(progress, c1, c12)
+				local c5x = GetHSVTransition(progress, c3, c34)
+				SetGradA(tails[1], "HORIZONTAL", c12, c1x)
+				SetGradA(tails[5], "HORIZONTAL", c5x, c34)
+			end
+			if progress < 1 - cornerP then
+				local c4x = GetHSVTransition(progress, c34, c4)
+				local c8x = GetHSVTransition(progress, c12, c2)
+				SetGradA(tails[3], "VERTICAL", c4, c41)
+				SetGradA(tails[4], "HORIZONTAL", c4x, c4)
+				SetGradA(tails[7], "VERTICAL", c23, c2)
+				SetGradA(tails[8], "HORIZONTAL", c2, c8x)
+			else
+				local c3x = GetHSVTransition(progress, c4, c41)
+				local c7x = GetHSVTransition(progress, c2, c23)
+				SetGradA(tails[3], "VERTICAL", c3x, c41)
+				SetGradA(tails[7], "VERTICAL", c23, c7x)
+			end
+		end
+	end
+end
+
+local function BorderSet4LinesCorner(f, update)
+	local inf = f.info
+	local tails = inf.tail.list
+	if not(update) then
+		for _, v in pairs(tails) do
+			v:ClearAllPoints()
+		end 
+		if inf.mirror then
+			tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+			tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+			tails[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+			tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT")
+			tails[5]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT")
+			tails[6]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+			tails[7]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+			tails[8]:SetPoint("TOPLEFT", f, "TOPLEFT")
+
+			tails[5]:Show()
+			tails[6]:Show()
+			tails[7]:Show()
+			tails[8]:Show()
+			
+			tails[1]:SetHeight(inf.th)
+			tails[2]:SetWidth(inf.th)
+			tails[3]:SetWidth(inf.th)
+			tails[4]:SetHeight(inf.th)
+			tails[5]:SetHeight(inf.th)
+			tails[6]:SetWidth(inf.th)
+			tails[7]:SetWidth(inf.th)
+			tails[8]:SetHeight(inf.th)
+		else
+			if inf.clockwise then
+				tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+				tails[2]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT")
+				tails[3]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT")
+				tails[4]:SetPoint("TOPLEFT", f, "TOPLEFT")
+			else
+				tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT")
+				tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+				tails[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT")
+				tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT")
+			end
+			tails[5]:Hide()
+			tails[6]:Hide()
+			tails[7]:Hide()
+			tails[8]:Hide()			
+			
+			tails[1]:SetHeight(inf.th)
+			tails[2]:SetWidth(inf.th)
+			tails[3]:SetHeight(inf.th)
+			tails[4]:SetWidth(inf.th)
+		end
+	end
+	local width, height = f:GetSize()
+	if inf.mirror then
+		tails[1]:SetWidth(width / 2)
+		tails[2]:SetHeight(height / 2 - inf.th)
+		tails[3]:SetHeight(height / 2 - inf.th)
+		tails[4]:SetWidth(width / 2)
+		tails[5]:SetWidth(width / 2)
+		tails[6]:SetHeight(height / 2 - inf.th)
+		tails[7]:SetHeight(height / 2 - inf.th)
+		tails[8]:SetWidth(width / 2)
+	else
+		tails[1]:SetWidth(width - inf.th)
+		tails[2]:SetHeight(height - inf.th)
+		tails[3]:SetWidth(width - inf.th)
+		tails[4]:SetHeight(height - inf.th)
+	end
+end
+
+local function BorderUpdate4LinesCorner(f, progress)
+	local inf = f.info
+	local tails = inf.tail.list
+		
+	if inf.mirror then
+		local newW = inf.width / 2 * (1 - progress)
+		local newH = (inf.height / 2 - inf.th) * (1 - progress)
+		tails[1]:SetWidth(newW)
+		tails[2]:SetHeight(newH)
+		tails[3]:SetHeight(newH)
+		tails[4]:SetWidth(newW)
+		tails[5]:SetWidth(newW)
+		tails[6]:SetHeight(newH)
+		tails[7]:SetHeight(newH)
+		tails[8]:SetWidth(newW)
+	else
+		local newW = (inf.width - inf.th) * (1 - progress)
+		local newH = (inf.height - inf.th) * (1 - progress)
+		tails[1]:SetWidth(newW)
+		tails[2]:SetHeight(newH)
+		tails[3]:SetWidth(newW)
+		tails[4]:SetHeight(newH)
+	end
+end
+
+local function BorderGradient4LinesCorner(f, progress, elapsed)
+	local inf = f.info
+	local tails = inf.tail.list
+	local c1, c2, c3, c4 = BorderGradientCorners(inf, elapsed)
+	
+	
+	if inf.mirror then
+		local gradProg = 0.5 + progress / 2
+		local c1x = GetHSVTransition(gradProg, c2, c1)
+		local c2x = GetHSVTransition(gradProg, c4, c1)
+		local c3x = GetHSVTransition(gradProg, c1, c4)
+		local c4x = GetHSVTransition(gradProg, c3, c4)
+		local c5x = GetHSVTransition(gradProg, c4, c3)
+		local c6x = GetHSVTransition(gradProg, c2, c3)
+		local c7x = GetHSVTransition(gradProg, c3, c2)
+		local c8x = GetHSVTransition(gradProg, c1, c2)
+		
+		SetGradA(tails[1], "HORIZONTAL", c1x, c1)
+		SetGradA(tails[2], "VERTICAL", c2x, c1)
+		SetGradA(tails[3], "VERTICAL", c4, c3x)
+		SetGradA(tails[4], "HORIZONTAL", c4x, c4)
+		SetGradA(tails[5], "HORIZONTAL", c3, c5x)
+		SetGradA(tails[6], "VERTICAL", c3, c6x)
+		SetGradA(tails[7], "VERTICAL", c7x, c2)
+		SetGradA(tails[8], "HORIZONTAL", c2, c8x)
+	else
+		if inf.clockwise then
+			local c1x = GetHSVTransition(progress, c2, c1)
+			local c2x = GetHSVTransition(progress, c1, c4)
+			local c3x = GetHSVTransition(progress, c4, c3)
+			local c4x = GetHSVTransition(progress, c3, c2)
+			
+			SetGradA(tails[1], "HORIZONTAL", c1x, c1)
+			SetGradA(tails[2], "VERTICAL", c4, c2x)
+			SetGradA(tails[3], "HORIZONTAL", c3, c3x)
+			SetGradA(tails[4], "VERTICAL", c4x, c2)
+		else
+			local c1x = GetHSVTransition(progress, c1, c2)
+			local c2x = GetHSVTransition(progress, c4, c1)
+			local c3x = GetHSVTransition(progress, c3, c4)
+			local c4x = GetHSVTransition(progress, c2, c3)
+			
+			SetGradA(tails[1], "HORIZONTAL", c2, c1x)
+			SetGradA(tails[2], "VERTICAL", c2x, c1)
+			SetGradA(tails[3], "HORIZONTAL", c3x, c4)
+			SetGradA(tails[4], "VERTICAL", c4x, c2)
+		end
+	end
+end
+
+local function BorderSet2LinesCenter(f, update)
+	local inf = f.info
+	local tails = inf.tail.list
+	if not(update) then
+		for _, v in pairs(tails) do
+			v:ClearAllPoints()
+		end 
+		if inf.mirror then
+			if inf.startPoint == "LEFT" or inf.startPoint == "RIGHT" then
+				inf.tail.Set1 = f.SetHeight
+				inf.tail.Set2 = f.SetWidth
+				tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+				tails[2]:SetPoint("TOP", f, "TOP")
+				tails[3]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+				tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+				tails[5]:SetPoint("BOTTOM", f, "BOTTOM")
+				tails[6]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+			else
+				inf.tail.Set1 = f.SetWidth
+				inf.tail.Set2 = f.SetHeight
+				tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+				tails[2]:SetPoint("LEFT", f, "LEFT")
+				tails[3]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+				tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+				tails[5]:SetPoint("RIGHT", f, "RIGHT")
+				tails[6]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+			end
+		else
+			if inf.startPoint == "TOP" or inf.startPoint == "BOTTOM" then
+				inf.tail.Set1 = f.SetWidth
+				inf.tail.Set2 = f.SetHeight				
+				if inf.clockwise then
+					tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+					tails[2]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+					tails[3]:SetPoint("BOTTOMLEFT", f, "BOTTOM")
+					tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+					tails[5]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+					tails[6]:SetPoint("TOPRIGHT", f, "TOP")
+				else
+					tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+					tails[2]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+					tails[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOM")
+					tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", - inf.th, 0)
+					tails[5]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+					tails[6]:SetPoint("TOPLEFT", f, "TOP")
+				end
+			else
+				inf.tail.Set1 = f.SetHeight
+				inf.tail.Set2 = f.SetWidth				
+				if inf.clockwise then
+					tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+					tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+					tails[3]:SetPoint("BOTTOMRIGHT", f, "RIGHT")
+					tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+					tails[5]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+					tails[6]:SetPoint("TOPLEFT", f, "LEFT")
+				else
+					tails[1]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+					tails[2]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+					tails[3]:SetPoint("TOPRIGHT", f, "RIGHT")
+					tails[4]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+					tails[5]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+					tails[6]:SetPoint("BOTTOMLEFT", f, "LEFT")
+				end		
+			end			
+		end
+		inf.tail.Set2(tails[1], inf.th)
+		inf.tail.Set1(tails[2], inf.th)
+		inf.tail.Set2(tails[3], inf.th)
+		inf.tail.Set2(tails[4], inf.th)
+		inf.tail.Set1(tails[5], inf.th)
+		inf.tail.Set2(tails[6], inf.th)
+	end
+	if inf.startPoint == "TOP" or inf.startPoint == "BOTTOM" then
+		inf.tail.size1 = f:GetWidth()
+		inf.tail.size2 = f:GetHeight()
+	else
+		inf.tail.size1 = f:GetHeight()
+		inf.tail.size2 = f:GetWidth()
+	end
+	if inf.mirror then
+		inf.tail.Set1(tails[1], inf.tail.size1 / 2 - inf.th)
+		inf.tail.Set2(tails[2], inf.tail.size2)
+		inf.tail.Set1(tails[3], inf.tail.size1 / 2 - inf.th)
+		inf.tail.Set1(tails[4], inf.tail.size1 / 2 - inf.th)
+		inf.tail.Set2(tails[5], inf.tail.size2)
+		inf.tail.Set1(tails[6], inf.tail.size1 / 2 - inf.th)
+	else
+		inf.tail.Set1(tails[1], inf.tail.size1/2 - inf.th)
+		inf.tail.Set2(tails[2], inf.tail.size2- inf.th)
+		inf.tail.Set1(tails[3], inf.tail.size1/2)
+		inf.tail.Set1(tails[4], inf.tail.size1/2 - inf.th)
+		inf.tail.Set2(tails[5], inf.tail.size2 - inf.th)
+		inf.tail.Set1(tails[6], inf.tail.size1/2)
+	end
+end
+
+local function BorderUpdate2LinesCenter(f, progress)
+	local inf = f.info
+	local tails = inf.tail.list
+	local oldProgress = inf.tail.old
+	
+	if inf.mirror then
+		local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2)
+		if progress < cornerP then
+			if oldProgress > cornerP or oldProgress <= 0 then
+				for _,v in pairs(tails) do
+					v:Show()
+				end
+				BorderSet2LinesCenter(f, true)
+			end
+			local stageProg = 1 - progress / cornerP
+			inf.tail.Set1(tails[1], stageProg * (inf.tail.size1 / 2 - inf.th))
+			inf.tail.Set1(tails[3], stageProg * (inf.tail.size1 / 2 - inf.th))
+			inf.tail.Set1(tails[4], stageProg * (inf.tail.size1 / 2 - inf.th))
+			inf.tail.Set1(tails[6], stageProg * (inf.tail.size1 / 2 - inf.th))
+			
+		else
+			if oldProgress >= 1 or oldProgress < cornerP then
+				tails[1]:Hide()
+				tails[2]:Show()
+				tails[3]:Hide()
+				tails[4]:Hide()
+				tails[5]:Show()
+				tails[6]:Hide()
+				BorderSet2LinesCenter(f, true)
+			end
+			local stageProg = (1 - progress) / (1 - cornerP)
+			inf.tail.Set2(tails[2], stageProg * inf.tail.size2)
+			inf.tail.Set2(tails[5], stageProg * inf.tail.size2)
+		end
+	else	
+		local cornerP = inf.tail.size1/2/(inf.tail.size1 + inf.tail.size2)	
+		if progress < cornerP then
+			if oldProgress > cornerP or oldProgress <= 0 then
+				for _, v in pairs(tails) do
+					v:Show()
+				end			
+				BorderSet2LinesCenter(f, true)
+			end
+			local stageProg = 1 - progress / cornerP
+			inf.tail.Set1(tails[1], stageProg * (inf.tail.size1 / 2 - inf.th))
+			inf.tail.Set1(tails[4], stageProg * (inf.tail.size1 / 2 - inf.th))
+		elseif progress < (1 - cornerP) then
+			if oldProgress > (1 - cornerP) or oldProgress <= cornerP then
+				tails[1]:Hide()
+				tails[2]:Show()
+				tails[3]:Show()
+				tails[4]:Hide()
+				tails[5]:Show()
+				tails[6]:Show()
+				BorderSet2LinesCenter(f, true)
+			end
+			local stageProg = (1 - cornerP - progress) / ( 1 - 2 * cornerP)
+			inf.tail.Set2(tails[2], stageProg * (inf.tail.size2 - inf.th))
+			inf.tail.Set2(tails[5], stageProg * (inf.tail.size2 - inf.th))
+		elseif progress < 1 then
+			if oldProgress >= 1 or oldProgress < (1 - cornerP) then
+				tails[1]:Hide()
+				tails[2]:Hide()
+				tails[3]:Show()
+				tails[4]:Hide()
+				tails[5]:Hide()
+				tails[6]:Show()
+				BorderSet2LinesCenter(f, true)
+			end
+				local stageProg = (1 - progress) / cornerP
+				inf.tail.Set1(tails[3], stageProg * (inf.tail.size1 / 2))
+				inf.tail.Set1(tails[6], stageProg * (inf.tail.size1 / 2))
+		end
+	end
+	inf.tail.old = progress
+end
+
+local function BorderGradient2LinesCenter(f, progress, elapsed)
+	local inf = f.info
+	local tails = inf.tail.list
+	local c1, c2, c3, c4 = BorderGradientCorners(inf, elapsed)
+		
+	if inf.mirror then
+		local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2)
+		if progress < cornerP then
+			local stageProg = progress / cornerP
+			if inf.startPoint == "LEFT" or inf.startPoint == "RIGHT" then
+				local c23 = GetHSVTransition(0.5, c2, c3)
+				local c41 = GetHSVTransition(0.5, c4, c1)
+				local c1x = GetHSVTransition(stageProg, c41, c1)
+				local c3x = GetHSVTransition(stageProg, c23, c2)
+				local c4x = GetHSVTransition(stageProg, c23, c3)
+				local c6x = GetHSVTransition(stageProg, c41, c4)
+				SetGradA(tails[1], "VERTICAL", c1x, c1)
+				SetGradA(tails[2], "HORIZONTAL", c2, c1)
+				SetGradA(tails[3], "VERTICAL", c3x, c2)
+				SetGradA(tails[4], "VERTICAL", c3, c4x)
+				SetGradA(tails[5], "HORIZONTAL", c3, c4)
+				SetGradA(tails[6], "VERTICAL", c4, c6x)
+			else
+				local c12 = GetHSVTransition(0.5, c1, c2)
+				local c34 = GetHSVTransition(0.5, c3, c4)
+				local c1x = GetHSVTransition(stageProg, c12, c2)
+				local c3x = GetHSVTransition(stageProg, c34, c3)
+				local c4x = GetHSVTransition(stageProg, c34, c4)
+				local c6x = GetHSVTransition(stageProg, c12, c1)
+				SetGradA(tails[1], "HORIZONTAL", c2, c1x)
+				SetGradA(tails[2], "VERTICAL", c3, c2)
+				SetGradA(tails[3], "HORIZONTAL", c3, c3x)
+				SetGradA(tails[4], "HORIZONTAL", c4x, c4)
+				SetGradA(tails[5], "VERTICAL", c4, c1)
+				SetGradA(tails[6], "HORIZONTAL", c6x, c1)
+			end
+		else
+			local stageProg = (progress - cornerP)/ (1 - cornerP) / 2
+			if inf.startPoint == "LEFT" or inf.startPoint == "RIGHT" then
+				local c2x1 = GetHSVTransition(stageProg, c2, c1)
+				local c2x2 = GetHSVTransition(stageProg, c1, c2)
+				local c5x1 = GetHSVTransition(stageProg, c3, c4)
+				local c5x2 = GetHSVTransition(stageProg, c4, c3)
+				SetGradA(tails[2], "HORIZONTAL", c2x1, c2x2)
+				SetGradA(tails[5], "HORIZONTAL", c5x1, c5x2)
+			else
+				local c2x1 = GetHSVTransition(stageProg, c3, c2)
+				local c2x2 = GetHSVTransition(stageProg, c2, c3)
+				local c5x1 = GetHSVTransition(stageProg, c4, c1)
+				local c5x2 = GetHSVTransition(stageProg, c1, c4)
+				SetGradA(tails[2], "VERTICAL", c2x1, c2x2)
+				SetGradA(tails[5], "VERTICAL", c5x1, c5x2)
+			end
+		end
+	else
+		local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2) / 2
+		if inf.clockwise then
+			if progress < cornerP then
+				local stageProg = progress / cornerP
+				if inf.startPoint == "TOP" or inf.startPoint == "BOTTOM" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c1x = GetHSVTransition(stageProg, c12, c1)
+					local c4x = GetHSVTransition(stageProg, c34, c3)
+					
+					SetGradA(tails[1], "HORIZONTAL", c1x, c1)
+					SetGradA(tails[2], "VERTICAL", c4, c1)
+					SetGradA(tails[3], "HORIZONTAL", c34, c4)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4x)
+					SetGradA(tails[5], "VERTICAL", c3, c2)
+					SetGradA(tails[6], "HORIZONTAL", c2, c12)
+					
+				else
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c1x = GetHSVTransition(stageProg, c23, c2)
+					local c4x = GetHSVTransition(stageProg, c41, c4)
+					
+					SetGradA(tails[1], "VERTICAL", c1x, c2)
+					SetGradA(tails[2], "HORIZONTAL", c2, c1)
+					SetGradA(tails[3], "VERTICAL", c41, c1)
+					SetGradA(tails[4], "VERTICAL", c4, c4x)
+					SetGradA(tails[5], "HORIZONTAL", c3, c4)
+					SetGradA(tails[6], "VERTICAL", c3, c23)
+				end
+			elseif progress < (1 - cornerP) then
+				local stageProg = (progress - cornerP)  / (1 - cornerP * 2)
+				if inf.startPoint == "TOP" or inf.startPoint == "BOTTOM" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c2x = GetHSVTransition(stageProg, c1, c4)
+					local c5x = GetHSVTransition(stageProg, c3, c2)
+					
+					SetGradA(tails[2], "VERTICAL", c4, c2x)
+					SetGradA(tails[3], "HORIZONTAL", c34, c4)
+					SetGradA(tails[5], "VERTICAL", c5x, c2)
+					SetGradA(tails[6], "HORIZONTAL", c2, c12)
+					
+				else
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c2x = GetHSVTransition(stageProg, c2, c1)
+					local c5x = GetHSVTransition(stageProg, c4, c3)
+					
+					SetGradA(tails[2], "HORIZONTAL", c2x, c1)
+					SetGradA(tails[3], "VERTICAL", c41, c1)
+					SetGradA(tails[5], "HORIZONTAL", c3, c5x)
+					SetGradA(tails[6], "VERTICAL", c3, c23)
+				end
+			else
+				local stageProg = (progress - 1 + cornerP) / cornerP
+				if inf.startPoint == "TOP" or inf.startPoint == "BOTTOM" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c3x = GetHSVTransition(stageProg, c4, c34)
+					local c6x = GetHSVTransition(stageProg, c2, c12)
+					
+					SetGradA(tails[3], "HORIZONTAL", c34, c3x)
+					SetGradA(tails[6], "HORIZONTAL", c6x, c12)
+					
+				else
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c3x = GetHSVTransition(stageProg, c1, c41)
+					local c6x = GetHSVTransition(stageProg, c3, c23)
+					
+					SetGradA(tails[3], "VERTICAL", c41, c3x)
+					SetGradA(tails[6], "VERTICAL", c6x, c23)
+				end
+			end
+		else
+			if progress < cornerP then
+				local stageProg = progress / cornerP
+				if inf.startPoint == "TOP" or inf.startPoint == "BOTTOM" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c1x = GetHSVTransition(stageProg, c12, c1)
+					local c4x = GetHSVTransition(stageProg, c34, c4)
+					
+					SetGradA(tails[1], "HORIZONTAL", c2, c1x)
+					SetGradA(tails[2], "VERTICAL", c3, c2)
+					SetGradA(tails[3], "HORIZONTAL", c3, c34)
+					SetGradA(tails[4], "HORIZONTAL", c4x, c4)
+					SetGradA(tails[5], "VERTICAL", c4, c1)
+					SetGradA(tails[6], "HORIZONTAL", c12, c1)
+					
+				else
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c1x = GetHSVTransition(stageProg, c23, c3)
+					local c4x = GetHSVTransition(stageProg, c41, c1)
+					
+					SetGradA(tails[1], "VERTICAL", c3, c1x)
+					SetGradA(tails[2], "HORIZONTAL", c3, c4)
+					SetGradA(tails[3], "VERTICAL", c4, c41)
+					SetGradA(tails[4], "VERTICAL", c4x, c1)
+					SetGradA(tails[5], "HORIZONTAL", c2, c1)
+					SetGradA(tails[6], "VERTICAL", c23, c2)
+				end
+			elseif progress < (1 - cornerP) then
+				local stageProg = (progress - cornerP)  / (1 - cornerP * 2)
+				if inf.startPoint == "TOP" or inf.startPoint == "BOTTOM" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c2x = GetHSVTransition(stageProg, c2, c3)
+					local c5x = GetHSVTransition(stageProg, c4, c1)
+					
+					SetGradA(tails[2], "VERTICAL", c3, c2x)
+					SetGradA(tails[3], "HORIZONTAL", c3, c34)
+					SetGradA(tails[5], "VERTICAL", c5x, c1)
+					SetGradA(tails[6], "HORIZONTAL", c12, c1)
+					
+				else
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c2x = GetHSVTransition(stageProg, c3, c4)
+					local c5x = GetHSVTransition(stageProg, c1, c2)
+					
+					SetGradA(tails[2], "HORIZONTAL", c2x, c4)
+					SetGradA(tails[3], "VERTICAL", c4, c41)
+					SetGradA(tails[5], "HORIZONTAL", c2, c5x)
+					SetGradA(tails[6], "VERTICAL", c23, c2)
+				end
+			else
+				local stageProg = (progress - 1 + cornerP) / cornerP
+				if inf.startPoint == "TOP" or inf.startPoint == "BOTTOM" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c3x = GetHSVTransition(stageProg, c3, c34)
+					local c6x = GetHSVTransition(stageProg, c1, c12)
+					
+					SetGradA(tails[3], "HORIZONTAL", c3x, c34)
+					SetGradA(tails[6], "HORIZONTAL", c12, c6x)
+					
+				else
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c3x = GetHSVTransition(stageProg, c4, c41)
+					local c6x = GetHSVTransition(stageProg, c2, c23)
+					
+					SetGradA(tails[3], "VERTICAL", c3x, c41)
+					SetGradA(tails[6], "VERTICAL", c23, c6x)
+				end
+			end
+		end
+	end
+end
+
+local function BorderSet2LinesCorner(f, update)
+	local inf = f.info
+	local tails = inf.tail.list
+	if not(update) then
+		for _, v in pairs(tails) do
+			v:ClearAllPoints()
+		end 
+		if inf.mirror then
+			if inf.startPoint == "TOPLEFT" or inf.startPoint == "BOTTOMRIGHT" then
+				tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+				tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+				tails[3]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT")
+				tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+			else
+				tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT")
+				tails[2]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+				tails[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT")
+				tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+			end
+			tails[1]:SetHeight(inf.th)
+			tails[2]:SetWidth(inf.th)
+			tails[3]:SetWidth(inf.th)
+			tails[4]:SetHeight(inf.th)
+		else
+			if inf.startPoint == "TOPLEFT" or inf.startPoint == "BOTTOMRIGHT" then
+				if inf.clockwise then
+					inf.tail.Set1 = f.SetWidth
+					inf.tail.Set2 = f.SetHeight
+					tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+					tails[2]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT")
+					tails[3]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+					tails[4]:SetPoint("TOPLEFT", f, "TOPLEFT")
+				else
+					inf.tail.Set1 = f.SetHeight
+					inf.tail.Set2 = f.SetWidth					
+					tails[1]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+					tails[2]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT")
+					tails[3]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+					tails[4]:SetPoint("TOPLEFT", f, "TOPLEFT")
+				end
+			else
+				if inf.clockwise then
+					inf.tail.Set1 = f.SetHeight
+					inf.tail.Set2 = f.SetWidth					
+					tails[1]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+					tails[2]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT")
+					tails[3]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+					tails[4]:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+				else
+					inf.tail.Set1 = f.SetWidth
+					inf.tail.Set2 = f.SetHeight
+					tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+					tails[2]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT")
+					tails[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+					tails[4]:SetPoint("TOPRIGHT", f, "TOPRIGHT")			
+				end
+			end
+			inf.tail.Set2(tails[1], inf.th)
+			inf.tail.Set1(tails[2], inf.th)
+			inf.tail.Set2(tails[3], inf.th)
+			inf.tail.Set1(tails[4], inf.th)
+		end
+	end
+	
+	if inf.mirror then
+		tails[1]:SetWidth(f:GetWidth())
+		tails[2]:SetHeight(f:GetHeight() - inf.th)
+		tails[3]:SetHeight(f:GetHeight())
+		tails[4]:SetWidth(f:GetWidth() - inf.th)
+	else
+		if inf.clockwise and (inf.startPoint == "TOPLEFT" or inf.startPoint == "BOTTOMRIGHT") or
+			 not(inf.clockwise) and (inf.startPoint == "BOTTOMLEFT" or inf.startPoint == "TOPRIGHT") then
+			inf.tail.size1 = f:GetWidth()
+		  inf.tail.size2 = f:GetHeight()
+		else
+			inf.tail.size1 = f:GetHeight()
+		  inf.tail.size2 = f:GetWidth()
+		end
+		inf.tail.Set1(tails[1], inf.tail.size1 - 2*inf.th)
+		inf.tail.Set2(tails[2], inf.tail.size2)
+		inf.tail.Set1(tails[3], inf.tail.size1 - 2*inf.th)
+		inf.tail.Set2(tails[4], inf.tail.size2)
+	end
+end
+
+local function BorderUpdate2LinesCorner(f, progress)
+	local inf = f.info
+	local tails = inf.tail.list
+	local oldProgress = inf.tail.old
+	if inf.mirror then
+		tails[1]:SetWidth((1 - progress) * inf.width)
+		tails[2]:SetHeight((1 - progress) * (inf.height - inf.th))
+		tails[3]:SetHeight((1 - progress) * inf.height)
+		tails[4]:SetWidth((1 - progress) * (inf.width - inf.th))
+	else
+		local cornerP = inf.tail.size1/(inf.tail.size1 + inf.tail.size2)	
+		if progress < cornerP then
+			if oldProgress > cornerP or oldProgress <= 0 then
+				for _, v in pairs(tails) do
+					v:Show()
+				end			
+				BorderSet2LinesCorner(f, true)
+			end
+			local stageProg = 1 - progress / cornerP
+			inf.tail.Set1(tails[1], stageProg * (inf.tail.size1 - 2*inf.th))
+			inf.tail.Set1(tails[3], stageProg * (inf.tail.size1 - 2*inf.th))
+		else
+			if oldProgress >= 1 or oldProgress < cornerP then
+				tails[1]:Hide()
+				tails[2]:Show()
+				tails[3]:Hide()
+				tails[4]:Show()
+				BorderSet2LinesCorner(f, true)
+			end
+				local stageProg = (1 - progress) / (1 - cornerP)
+				inf.tail.Set2(tails[2], stageProg * inf.tail.size2)
+				inf.tail.Set2(tails[4], stageProg * inf.tail.size2)
+		end
+	end
+	inf.tail.old = progress
+end
+
+local function BorderGradient2LinesCorner(f, progress, elapsed)
+	local inf = f.info
+	local tails = inf.tail.list
+	local c1, c2, c3, c4 = BorderGradientCorners(inf, elapsed)
+		
+	if inf.mirror then
+		if inf.startPoint == "TOPLEFT" or inf.startPoint == "BOTTOMRIGHT" then
+			local c1x = GetHSVTransition(progress, c2, c1)
+			local c2x = GetHSVTransition(progress, c4, c1)
+			local c3x = GetHSVTransition(progress, c2, c3)
+			local c4x = GetHSVTransition(progress, c4, c3)
+			
+			SetGradA(tails[1], "HORIZONTAL", c1x, c1)
+			SetGradA(tails[2], "VERTICAL", c2x, c1)
+			SetGradA(tails[3], "VERTICAL", c3, c3x)
+			SetGradA(tails[4], "HORIZONTAL", c3, c4)
+		else
+			local c1x = GetHSVTransition(progress, c1, c2)
+			local c2x = GetHSVTransition(progress, c3, c2)
+			local c3x = GetHSVTransition(progress, c1, c4)
+			local c4x = GetHSVTransition(progress, c3, c4)
+			
+			SetGradA(tails[1], "HORIZONTAL", c2, c1x)
+			SetGradA(tails[2], "VERTICAL", c2x, c2)
+			SetGradA(tails[3], "VERTICAL", c4, c3x)
+			SetGradA(tails[4], "HORIZONTAL", c4x, c4)
+		end
+	else
+		local cornerP = inf.tail.size1/(inf.tail.size1 + inf.tail.size2)
+		if inf.clockwise then
+			if progress < cornerP then
+				local stageProg = progress / cornerP
+				if inf.startPoint == "TOPLEFT" or inf.startPoint == "BOTTOMRIGHT" then
+					local c1x = GetHSVTransition(stageProg, c2, c1)
+					local c3x = GetHSVTransition(stageProg, c4, c3)
+					
+					SetGradA(tails[1], "HORIZONTAL", c1x, c1)
+					SetGradA(tails[2], "VERTICAL", c4, c1)
+					SetGradA(tails[3], "HORIZONTAL", c3, c3x)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+					
+				else
+					local c1x = GetHSVTransition(stageProg, c1, c4)
+					local c3x = GetHSVTransition(stageProg, c3, c2)
+					
+					SetGradA(tails[1], "VERTICAL", c4, c1x)
+					SetGradA(tails[2], "HORIZONTAL", c3, c4)
+					SetGradA(tails[3], "VERTICAL", c3x, c2)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+				end
+			else
+				local stageProg = (progress - cornerP)  / (1 - cornerP)
+				if inf.startPoint == "TOPLEFT" or inf.startPoint == "BOTTOMRIGHT" then
+					local c2x = GetHSVTransition(stageProg, c1, c4)
+					local c4x = GetHSVTransition(stageProg, c3, c2)
+					
+					
+					SetGradA(tails[2], "VERTICAL", c4, c2x)
+					SetGradA(tails[4], "VERTICAL", c4x, c2)
+					
+				else
+					local c2x = GetHSVTransition(stageProg, c4, c3)
+					local c4x = GetHSVTransition(stageProg, c2, c1)
+					
+					SetGradA(tails[2], "HORIZONTAL", c3, c2x)
+					SetGradA(tails[4], "HORIZONTAL", c4x, c1)
+				end
+			end
+		else
+			if progress < cornerP then
+				local stageProg = progress / cornerP
+				if inf.startPoint == "TOPLEFT" or inf.startPoint == "BOTTOMRIGHT" then
+					local c1x = GetHSVTransition(stageProg, c2, c3)
+					local c3x = GetHSVTransition(stageProg, c4, c1)
+					
+					SetGradA(tails[1], "VERTICAL", c3, c1x)
+					SetGradA(tails[2], "HORIZONTAL", c3, c4)
+					SetGradA(tails[3], "VERTICAL", c3x, c1)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+					
+				else
+					local c1x = GetHSVTransition(stageProg, c1, c2)
+					local c3x = GetHSVTransition(stageProg, c3, c4)
+					
+					SetGradA(tails[1], "HORIZONTAL", c2, c1x)
+					SetGradA(tails[2], "VERTICAL", c3, c2)
+					SetGradA(tails[3], "HORIZONTAL", c3x, c4)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+				end
+			else
+				local stageProg = (progress - cornerP)  / (1 - cornerP)
+				if inf.startPoint == "TOPLEFT" or inf.startPoint == "BOTTOMRIGHT" then
+					local c2x = GetHSVTransition(stageProg, c3, c4)
+					local c4x = GetHSVTransition(stageProg, c1, c2)
+					
+					
+					SetGradA(tails[2], "HORIZONTAL", c2x, c4)
+					SetGradA(tails[4], "HORIZONTAL", c2, c4x)
+					
+				else
+					local c2x = GetHSVTransition(stageProg, c2, c3)
+					local c4x = GetHSVTransition(stageProg, c4, c1)
+					
+					SetGradA(tails[2], "VERTICAL", c3, c2x)
+					SetGradA(tails[4], "VERTICAL", c4x, c1)
+				end
+			end
+		end
+	end
+end
+
+local function BorderSet1LineCenter(f, update)
+	local inf = f.info
+	local tails = inf.tail.list
+	if not(update) then 
+		for _, v in pairs(tails) do
+			v:ClearAllPoints()
+		end
+		if inf.mirror then
+			if inf.startPoint == "TOP" then
+				inf.tail.Set1 = f.SetWidth
+				inf.tail.Set2 = f.SetHeight
+				tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+				tails[2]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+				tails[3]:SetPoint("BOTTOM", f, "BOTTOM")
+				tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+				tails[5]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+			elseif inf.startPoint == "BOTTOM" then
+				inf.tail.Set1 = f.SetWidth
+				inf.tail.Set2 = f.SetHeight
+				tails[1]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+				tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+				tails[3]:SetPoint("TOP", f, "TOP")
+				tails[4]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+				tails[5]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+			elseif inf.startPoint == "LEFT" then
+				inf.tail.Set1 = f.SetHeight
+				inf.tail.Set2 = f.SetWidth
+				tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+				tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+				tails[3]:SetPoint("RIGHT", f, "RIGHT")
+				tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+				tails[5]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+			else				
+				inf.tail.Set1 = f.SetHeight
+				inf.tail.Set2 = f.SetWidth
+				tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+				tails[2]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+				tails[3]:SetPoint("LEFT", f, "LEFT")
+				tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+				tails[5]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+			end	
+		else
+			if inf.clockwise then
+				if inf.startPoint == "TOP" then
+					inf.tail.Set1 = f.SetWidth
+					inf.tail.Set2 = f.SetHeight				
+					tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+					tails[2]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+					tails[3]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+					tails[4]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+					tails[5]:SetPoint("TOPRIGHT", f, "TOP")
+				elseif inf.startPoint == "BOTTOM" then
+					inf.tail.Set1 = f.SetWidth
+					inf.tail.Set2 = f.SetHeight				
+					tails[1]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+					tails[2]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+					tails[3]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+					tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+					tails[5]:SetPoint("BOTTOMLEFT", f, "BOTTOM")
+				elseif inf.startPoint == "LEFT" then
+					inf.tail.Set1 = f.SetHeight
+					inf.tail.Set2 = f.SetWidth				
+					tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+					tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+					tails[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+					tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+					tails[5]:SetPoint("TOPLEFT", f, "LEFT")				
+				else
+					inf.tail.Set1 = f.SetHeight
+					inf.tail.Set2 = f.SetWidth				
+					tails[1]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+					tails[2]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+					tails[3]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+					tails[4]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+					tails[5]:SetPoint("BOTTOMRIGHT", f, "RIGHT")
+				end
+			else
+				if inf.startPoint == "TOP" then
+					inf.tail.Set1 = f.SetWidth
+					inf.tail.Set2 = f.SetHeight				
+					tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+					tails[2]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+					tails[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+					tails[4]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+					tails[5]:SetPoint("TOPLEFT", f, "TOP")
+				elseif inf.startPoint == "BOTTOM" then
+					inf.tail.Set1 = f.SetWidth
+					inf.tail.Set2 = f.SetHeight				
+					tails[1]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+					tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+					tails[3]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+					tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+					tails[5]:SetPoint("BOTTOMRIGHT", f, "BOTTOM")
+				elseif inf.startPoint == "LEFT" then
+					inf.tail.Set1 = f.SetHeight
+					inf.tail.Set2 = f.SetWidth				
+					tails[1]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+					tails[2]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+					tails[3]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+					tails[4]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+					tails[5]:SetPoint("BOTTOMLEFT", f, "LEFT")				
+				else
+					inf.tail.Set1 = f.SetHeight
+					inf.tail.Set2 = f.SetWidth				
+					tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+					tails[2]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+					tails[3]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+					tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+					tails[5]:SetPoint("TOPRIGHT", f, "RIGHT")
+				end
+			end
+		
+		end	
+		inf.tail.Set2(tails[1], inf.th)
+		inf.tail.Set1(tails[2], inf.th)
+		inf.tail.Set2(tails[3], inf.th)
+		inf.tail.Set1(tails[4], inf.th)
+		inf.tail.Set2(tails[5], inf.th)
+	end
+	if inf.startPoint == "TOP" or inf.startPoint == "BOTTOM" then
+		inf.tail.size1 = f:GetWidth()
+		inf.tail.size2 = f:GetHeight()
+	else
+		inf.tail.size1 = f:GetHeight()
+		inf.tail.size2 = f:GetWidth()
+	end
+	
+	if inf.mirror then
+		inf.tail.Set1(tails[1], inf.tail.size1/2 - inf.th)
+		inf.tail.Set2(tails[2], inf.tail.size2 - inf.th)
+		inf.tail.Set1(tails[3], inf.tail.size1)
+		inf.tail.Set2(tails[4], inf.tail.size2 - inf.th)
+		inf.tail.Set1(tails[5], inf.tail.size1/2 - inf.th)
+	else
+		inf.tail.Set1(tails[1], inf.tail.size1/2 - inf.th)
+		inf.tail.Set2(tails[2], inf.tail.size2 - inf.th)
+		inf.tail.Set1(tails[3], inf.tail.size1 - inf.th)
+		inf.tail.Set2(tails[4], inf.tail.size2 - inf.th)
+		inf.tail.Set1(tails[5], inf.tail.size1/2)
+	end
+end
+
+local function BorderUpdate1LineCenter(f, progress)
+	local inf = f.info
+	local tails = inf.tail.list
+	local oldProgress = inf.tail.old
+	
+	if inf.mirror then
+		local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2) / 2
+		if progress < cornerP then
+			if oldProgress > cornerP or oldProgress <= 0 then
+				for _, v in pairs(tails) do
+					v:Show()
+				end			
+				BorderSet1LineCenter (f, true)
+			end
+			local stageProg = 1 - progress / cornerP
+			inf.tail.Set1(tails[1], stageProg * (inf.tail.size1 / 2 - inf.th))
+			inf.tail.Set1(tails[5], stageProg * (inf.tail.size1 / 2 - inf.th))
+		elseif progress < 1 - cornerP then
+			if oldProgress > 1 - cornerP or oldProgress <= cornerP then
+				tails[1]:Hide()
+				tails[2]:Show()
+				tails[3]:Show()
+				tails[4]:Show()
+				tails[5]:Hide()
+				BorderSet1LineCenter (f, true)
+			end
+			local stageProg = (1 - progress - cornerP) / (1 - cornerP * 2)
+			inf.tail.Set2(tails[2], stageProg * (inf.tail.size2 - inf.th))
+			inf.tail.Set2(tails[4], stageProg * (inf.tail.size2 - inf.th))
+		else
+			if oldProgress >= 1 or oldProgress <= 1 - cornerP then
+				tails[1]:Hide()
+				tails[2]:Hide()
+				tails[3]:Show()
+				tails[4]:Hide()
+				tails[5]:Hide()
+				BorderSet1LineCenter (f, true)
+			end
+			local stageProg = (1 - progress) / cornerP
+			inf.tail.Set1(tails[3], stageProg * inf.tail.size1)
+		end
+	else
+		local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2) / 4
+		if progress < cornerP then
+			if oldProgress > cornerP or oldProgress <= 0 then
+				for _, v in pairs(tails) do
+					v:Show()
+				end			
+				BorderSet1LineCenter (f, true)
+			end
+			local stageProg = 1 - progress / cornerP
+			inf.tail.Set1(tails[1], stageProg * (inf.tail.size1 / 2 - inf.th))
+		elseif progress < 0.5 - cornerP then
+			if oldProgress > 0.5 - cornerP or oldProgress <= cornerP then
+				tails[1]:Hide()
+				tails[2]:Show()
+				tails[3]:Show()
+				tails[4]:Show()
+				tails[5]:Show()
+				BorderSet1LineCenter (f, true)
+			end
+			local stageProg = (0.5 - cornerP - progress) / (0.5 - cornerP * 2)
+			inf.tail.Set2(tails[2], stageProg * (inf.tail.size2 - inf.th))
+		elseif progress < 0.5 + cornerP then
+			if oldProgress > 0.5 + cornerP or oldProgress <= 0.5 - cornerP then
+				tails[1]:Hide()
+				tails[2]:Hide()
+				tails[3]:Show()
+				tails[4]:Show()
+				tails[5]:Show()
+				BorderSet1LineCenter (f, true)
+			end
+			local stageProg = (0.5 + cornerP - progress) / cornerP / 2
+			inf.tail.Set1(tails[3], stageProg * (inf.tail.size1 - inf.th))
+		elseif progress < 1 - cornerP then
+			if oldProgress > 1 - cornerP or oldProgress <= 0.5 + cornerP then
+				tails[1]:Hide()
+				tails[2]:Hide()
+				tails[3]:Hide()
+				tails[4]:Show()
+				tails[5]:Show()
+				BorderSet1LineCenter (f, true)
+			end
+			local stageProg = (1 - cornerP - progress) / (0.5 - cornerP * 2)
+			inf.tail.Set2(tails[4], stageProg * (inf.tail.size2 - inf.th))
+		else
+			if oldProgress >= 1 or oldProgress <= (1 - cornerP) then
+				tails[1]:Hide()
+				tails[2]:Hide()
+				tails[3]:Hide()
+				tails[4]:Hide()
+				tails[5]:Show()
+				BorderSet1LineCenter (f, true)
+			end
+			local stageProg = (1 - progress) / cornerP
+			inf.tail.Set1(tails[5], stageProg * (inf.tail.size1 / 2))
+		end
+	end	
+	inf.tail.old = progress
+end
+
+local function BorderGradient1LineCenter(f, progress, elapsed)
+	local inf = f.info
+	local tails = inf.tail.list
+	local c1, c2, c3, c4 = BorderGradientCorners(inf, elapsed)
+	
+	local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2) / 4
+	if inf.mirror then
+		local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2) / 2
+		if progress < cornerP then
+			local stageProg = progress / cornerP
+			if inf.startPoint == "TOP" then
+				local c12 = GetHSVTransition(0.5, c1, c2)
+				local c1x = GetHSVTransition(stageProg, c12, c1)
+				local c5x = GetHSVTransition(stageProg, c12, c2)
+				
+				SetGradA(tails[1], "HORIZONTAL", c1x, c1)
+				SetGradA(tails[2], "VERTICAL", c4, c1)
+				SetGradA(tails[3], "HORIZONTAL", c3, c4)
+				SetGradA(tails[4], "VERTICAL", c3, c2)
+				SetGradA(tails[5], "HORIZONTAL", c2, c5x)
+				
+			elseif inf.startPoint == "BOTTOM" then
+				local c34 = GetHSVTransition(0.5, c3, c4)
+				local c1x = GetHSVTransition(stageProg, c34, c4)
+				local c5x = GetHSVTransition(stageProg, c34, c3)
+				
+				SetGradA(tails[1], "HORIZONTAL", c1x, c4)
+				SetGradA(tails[2], "VERTICAL", c4, c1)
+				SetGradA(tails[3], "HORIZONTAL", c2, c1)
+				SetGradA(tails[4], "VERTICAL", c3, c2)
+				SetGradA(tails[5], "HORIZONTAL", c3, c5x)
+				
+			elseif inf.startPoint == "LEFT" then
+				local c23 = GetHSVTransition(0.5, c2, c3)
+				local c1x = GetHSVTransition(stageProg, c23, c2)
+				local c5x = GetHSVTransition(stageProg, c23, c3)
+				
+				SetGradA(tails[1], "VERTICAL", c1x, c2)
+				SetGradA(tails[2], "HORIZONTAL", c2, c1)
+				SetGradA(tails[3], "VERTICAL", c4, c1)
+				SetGradA(tails[4], "HORIZONTAL", c3, c4)
+				SetGradA(tails[5], "VERTICAL", c3, c5x)
+				
+			else
+				local c41 = GetHSVTransition(0.5, c4, c1)
+				local c1x = GetHSVTransition(stageProg, c41, c1)
+				local c5x = GetHSVTransition(stageProg, c41, c4)
+				
+				SetGradA(tails[1], "VERTICAL", c1x, c1)
+				SetGradA(tails[2], "HORIZONTAL", c2, c1)
+				SetGradA(tails[3], "VERTICAL", c3, c2)
+				SetGradA(tails[4], "HORIZONTAL", c3, c4)
+				SetGradA(tails[5], "VERTICAL", c4, c5x)
+			end
+		elseif progress < (1 - cornerP) then
+			local stageProg = (progress - cornerP)  / (1 - cornerP * 2)
+			if inf.startPoint == "TOP" then
+				local c2x = GetHSVTransition(stageProg, c1, c4)
+				local c4x = GetHSVTransition(stageProg, c2, c3)
+				
+				SetGradA(tails[2], "VERTICAL", c4, c2x)
+				SetGradA(tails[3], "HORIZONTAL", c3, c4)
+				SetGradA(tails[4], "VERTICAL", c3, c4x)
+			elseif inf.startPoint == "BOTTOM" then
+				local c2x = GetHSVTransition(stageProg, c4, c1)
+				local c4x = GetHSVTransition(stageProg, c3, c2)
+				
+				SetGradA(tails[2], "VERTICAL", c2x, c1)
+				SetGradA(tails[3], "HORIZONTAL", c2, c1)
+				SetGradA(tails[4], "VERTICAL", c4x, c2)
+			elseif inf.startPoint == "LEFT" then
+				local c2x = GetHSVTransition(stageProg, c2, c1)
+				local c4x = GetHSVTransition(stageProg, c3, c4)
+				
+				SetGradA(tails[2], "HORIZONTAL", c2x, c1)
+				SetGradA(tails[3], "VERTICAL", c4, c1)
+				SetGradA(tails[4], "HORIZONTAL", c4x, c4)
+			else
+				local c2x = GetHSVTransition(stageProg, c1, c2)
+				local c4x = GetHSVTransition(stageProg, c4, c3)
+				
+				SetGradA(tails[2], "HORIZONTAL", c2, c2x)
+				SetGradA(tails[3], "VERTICAL", c3, c2)
+				SetGradA(tails[4], "HORIZONTAL", c3, c4x)
+			end
+		else
+			local stageProg = (progress - 1 + 0.5) / cornerP
+			if inf.startPoint == "TOP" then
+				local c34 = GetHSVTransition(0.5, c3, c4)
+				local c3x1 = GetHSVTransition(stageProg, c3, c34)
+				local c3x2 = GetHSVTransition(stageProg, c4, c34)
+				
+				SetGradA(tails[3], "HORIZONTAL", c3x1, c3x2)
+			elseif inf.startPoint == "BOTTOM" then
+				local c12 = GetHSVTransition(0.5, c1, c2)
+				local c3x1 = GetHSVTransition(stageProg, c2, c12)
+				local c3x2 = GetHSVTransition(stageProg, c1, c12)
+				
+				SetGradA(tails[3], "HORIZONTAL", c3x1, c3x2)
+			elseif inf.startPoint == "LEFT" then
+				local c41 = GetHSVTransition(0.5, c4, c1)
+				local c3x1 = GetHSVTransition(stageProg, c4, c41)
+				local c3x2 = GetHSVTransition(stageProg, c1, c41)
+				
+				SetGradA(tails[3], "VERTICAL", c3x1, c3x2)
+			else
+				local c23 = GetHSVTransition(0.5, c2, c3)
+				local c3x1 = GetHSVTransition(stageProg, c3, c23)
+				local c3x2 = GetHSVTransition(stageProg, c2, c23)
+				
+				SetGradA(tails[3], "VERTICAL", c3x1, c3x2)
+			end
+		end
+	else
+		if inf.clockwise then
+			if progress < cornerP then
+				local stageProg = progress / cornerP
+				if inf.startPoint == "TOP" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c1x = GetHSVTransition(stageProg, c12, c1)
+					SetGradA(tails[1], "HORIZONTAL", c1x, c1)
+					SetGradA(tails[2], "VERTICAL", c4, c1)
+					SetGradA(tails[3], "HORIZONTAL", c3, c4)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+					SetGradA(tails[5], "HORIZONTAL", c2, c12)				
+					
+				elseif inf.startPoint == "BOTTOM" then
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c1x = GetHSVTransition(stageProg, c34, c3)
+					SetGradA(tails[1], "HORIZONTAL", c3, c1x)
+					SetGradA(tails[2], "VERTICAL", c3, c2)
+					SetGradA(tails[3], "HORIZONTAL", c2, c1)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+					SetGradA(tails[5], "HORIZONTAL", c34, c4)
+					
+				elseif inf.startPoint == "LEFT" then
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c1x = GetHSVTransition(stageProg, c23, c2)
+					SetGradA(tails[1], "VERTICAL", c1x, c2)
+					SetGradA(tails[2], "HORIZONTAL", c2, c1)
+					SetGradA(tails[3], "VERTICAL", c4, c1)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+					SetGradA(tails[5], "VERTICAL", c3, c23)
+				
+				else
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c1x = GetHSVTransition(stageProg, c41, c4)
+					SetGradA(tails[1], "VERTICAL", c4, c1x)
+					SetGradA(tails[2], "HORIZONTAL", c3, c4)
+					SetGradA(tails[3], "VERTICAL", c3, c2)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+					SetGradA(tails[5], "VERTICAL", c41, c1)	
+				end
+			elseif progress < 0.5 - cornerP then
+				local stageProg = (progress - cornerP) / (0.5 - cornerP * 2)
+				if inf.startPoint == "TOP" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c2x = GetHSVTransition(stageProg, c1, c4)
+					SetGradA(tails[2], "VERTICAL", c4, c2x)
+					SetGradA(tails[3], "HORIZONTAL", c3, c4)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+					SetGradA(tails[5], "HORIZONTAL", c2, c12)				
+					
+				elseif inf.startPoint == "BOTTOM" then
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c2x = GetHSVTransition(stageProg, c3, c2)
+					SetGradA(tails[2], "VERTICAL", c2x, c2)
+					SetGradA(tails[3], "HORIZONTAL", c2, c1)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+					SetGradA(tails[5], "HORIZONTAL", c34, c4)
+					
+				elseif inf.startPoint == "LEFT" then
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c2x = GetHSVTransition(stageProg, c2, c1)
+					SetGradA(tails[2], "HORIZONTAL", c2x, c1)
+					SetGradA(tails[3], "VERTICAL", c4, c1)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+					SetGradA(tails[5], "VERTICAL", c3, c23)
+				
+				else
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c2x = GetHSVTransition(stageProg, c4, c3)
+					SetGradA(tails[2], "HORIZONTAL", c3, c2x)
+					SetGradA(tails[3], "VERTICAL", c3, c2)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+					SetGradA(tails[5], "VERTICAL", c41, c1)	
+				end
+			elseif progress < 0.5 + cornerP then
+				local stageProg = (progress - 0.5 + cornerP) / cornerP / 2
+				if inf.startPoint == "TOP" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c3x = GetHSVTransition(stageProg, c4, c3)
+					SetGradA(tails[3], "HORIZONTAL", c3, c3x)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+					SetGradA(tails[5], "HORIZONTAL", c2, c12)				
+					
+				elseif inf.startPoint == "BOTTOM" then
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c3x = GetHSVTransition(stageProg, c2, c1)
+					SetGradA(tails[3], "HORIZONTAL", c3x, c1)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+					SetGradA(tails[5], "HORIZONTAL", c34, c4)
+					
+				elseif inf.startPoint == "LEFT" then
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c3x = GetHSVTransition(stageProg, c1, c4)
+					SetGradA(tails[3], "VERTICAL", c4, c3x)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+					SetGradA(tails[5], "VERTICAL", c3, c23)
+				
+				else
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c3x = GetHSVTransition(stageProg, c3, c2)
+					SetGradA(tails[3], "VERTICAL", c3x, c2)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+					SetGradA(tails[5], "VERTICAL", c41, c1)	
+				end
+			elseif progress < 1 - cornerP then
+				local stageProg = (progress - 0.5 - cornerP) / (0.5 - cornerP * 2)
+				if inf.startPoint == "TOP" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c4x = GetHSVTransition(stageProg, c3, c2)
+					SetGradA(tails[4], "VERTICAL", c4x, c2)
+					SetGradA(tails[5], "HORIZONTAL", c2, c12)				
+					
+				elseif inf.startPoint == "BOTTOM" then
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c4x = GetHSVTransition(stageProg, c1, c4)
+					SetGradA(tails[4], "VERTICAL", c4, c4x)
+					SetGradA(tails[5], "HORIZONTAL", c34, c4)
+					
+				elseif inf.startPoint == "LEFT" then
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c4x = GetHSVTransition(stageProg, c4, c3)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4x)
+					SetGradA(tails[5], "VERTICAL", c3, c23)
+				
+				else
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c4x = GetHSVTransition(stageProg, c2, c1)
+					SetGradA(tails[4], "HORIZONTAL", c4x, c1)
+					SetGradA(tails[5], "VERTICAL", c41, c1)	
+				end
+			else
+				local stageProg = (progress - 1 + cornerP) / cornerP
+				if inf.startPoint == "TOP" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c5x = GetHSVTransition(stageProg, c2, c12)
+					SetGradA(tails[5], "HORIZONTAL", c5x, c12)				
+					
+				elseif inf.startPoint == "BOTTOM" then
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c5x = GetHSVTransition(stageProg, c4, c34)
+					SetGradA(tails[5], "HORIZONTAL", c34, c5x)
+					
+				elseif inf.startPoint == "LEFT" then
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c5x = GetHSVTransition(stageProg, c3, c23)
+					SetGradA(tails[5], "VERTICAL", c5x, c23)
+				
+				else
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c5x = GetHSVTransition(stageProg, c1, c41)
+					SetGradA(tails[5], "VERTICAL", c41, c5x)
+				end
+			end
+		else
+			if progress < cornerP then
+				local stageProg = progress / cornerP
+				if inf.startPoint == "TOP" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c1x = GetHSVTransition(stageProg, c2, c12)
+					SetGradA(tails[1], "HORIZONTAL", c2, c1x)
+					SetGradA(tails[2], "VERTICAL", c3, c2)
+					SetGradA(tails[3], "HORIZONTAL", c3, c4)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+					SetGradA(tails[5], "HORIZONTAL", c12, c1)				
+					
+				elseif inf.startPoint == "BOTTOM" then
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c1x = GetHSVTransition(stageProg, c34, c4)
+					SetGradA(tails[1], "HORIZONTAL", c1x, c4)
+					SetGradA(tails[2], "VERTICAL", c4, c1)
+					SetGradA(tails[3], "HORIZONTAL", c2, c1)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+					SetGradA(tails[5], "HORIZONTAL", c3, c34)
+					
+				elseif inf.startPoint == "LEFT" then
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c1x = GetHSVTransition(stageProg, c3, c23)
+					SetGradA(tails[1], "VERTICAL", c3, c1x)
+					SetGradA(tails[2], "HORIZONTAL", c3, c4)
+					SetGradA(tails[3], "VERTICAL", c4, c1)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+					SetGradA(tails[5], "VERTICAL", c23, c2)
+				
+				else
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c1x = GetHSVTransition(stageProg, c41, c1)
+					SetGradA(tails[1], "VERTICAL", c1x, c1)
+					SetGradA(tails[2], "HORIZONTAL", c2, c1)
+					SetGradA(tails[3], "VERTICAL", c3, c2)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+					SetGradA(tails[5], "VERTICAL", c4, c41)	
+				end
+			elseif progress < 0.5 - cornerP then
+				local stageProg = (progress - cornerP) / (0.5 - cornerP * 2)
+				if inf.startPoint == "TOP" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c2x = GetHSVTransition(stageProg, c2, c3)
+					SetGradA(tails[2], "VERTICAL", c3, c2x)
+					SetGradA(tails[3], "HORIZONTAL", c3, c4)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+					SetGradA(tails[5], "HORIZONTAL", c12, c1)				
+					
+				elseif inf.startPoint == "BOTTOM" then
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c2x = GetHSVTransition(stageProg, c4, c1)
+					SetGradA(tails[2], "VERTICAL", c2x, c1)
+					SetGradA(tails[3], "HORIZONTAL", c2, c1)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+					SetGradA(tails[5], "HORIZONTAL", c3, c34)
+					
+				elseif inf.startPoint == "LEFT" then
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c2x = GetHSVTransition(stageProg, c3, c4)
+					SetGradA(tails[2], "HORIZONTAL", c2x, c4)
+					SetGradA(tails[3], "VERTICAL", c4, c1)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+					SetGradA(tails[5], "VERTICAL", c23, c2)
+				
+				else
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c2x = GetHSVTransition(stageProg, c1, c2)
+					SetGradA(tails[2], "HORIZONTAL", c2, c2x)
+					SetGradA(tails[3], "VERTICAL", c3, c2)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+					SetGradA(tails[5], "VERTICAL", c4, c41)	
+				end
+			elseif progress < 0.5 + cornerP then
+				local stageProg = (progress - 0.5 + cornerP) / cornerP / 2
+				if inf.startPoint == "TOP" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c3x = GetHSVTransition(stageProg, c3, c4)
+					SetGradA(tails[3], "HORIZONTAL", c3x, c4)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+					SetGradA(tails[5], "HORIZONTAL", c12, c1)				
+					
+				elseif inf.startPoint == "BOTTOM" then
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c3x = GetHSVTransition(stageProg, c1, c2)
+					SetGradA(tails[3], "HORIZONTAL", c2, c3x)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+					SetGradA(tails[5], "HORIZONTAL", c3, c34)
+					
+				elseif inf.startPoint == "LEFT" then
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c3x = GetHSVTransition(stageProg, c4, c1)
+					SetGradA(tails[3], "VERTICAL", c3x, c1)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+					SetGradA(tails[5], "VERTICAL", c23, c2)
+				
+				else
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c3x = GetHSVTransition(stageProg, c2, c3)
+					SetGradA(tails[3], "VERTICAL", c3, c3x)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+					SetGradA(tails[5], "VERTICAL", c4, c41)	
+				end
+			elseif progress < 1 - cornerP then
+				local stageProg = (progress - 0.5 - cornerP) / (0.5 - cornerP * 2)
+				if inf.startPoint == "TOP" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c4x = GetHSVTransition(stageProg, c4, c1)
+					SetGradA(tails[4], "VERTICAL", c4x, c1)
+					SetGradA(tails[5], "HORIZONTAL", c12, c1)				
+					
+				elseif inf.startPoint == "BOTTOM" then
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c4x = GetHSVTransition(stageProg, c2, c3)
+					SetGradA(tails[4], "VERTICAL", c3, c4x)
+					SetGradA(tails[5], "HORIZONTAL", c3, c34)
+					
+				elseif inf.startPoint == "LEFT" then
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c4x = GetHSVTransition(stageProg, c1, c2)
+					SetGradA(tails[4], "HORIZONTAL", c2, c4x)
+					SetGradA(tails[5], "VERTICAL", c23, c2)
+				
+				else
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c4x = GetHSVTransition(stageProg, c3, c4)
+					SetGradA(tails[4], "HORIZONTAL", c4x, c4)
+					SetGradA(tails[5], "VERTICAL", c4, c41)	
+				end
+			else
+				local stageProg = (progress - 1 + cornerP) / cornerP
+				if inf.startPoint == "TOP" then
+					local c12 = GetHSVTransition(0.5, c1, c2)
+					local c5x = GetHSVTransition(stageProg, c1, c12)
+					SetGradA(tails[5], "HORIZONTAL", c12, c5x)				
+					
+				elseif inf.startPoint == "BOTTOM" then
+					local c34 = GetHSVTransition(0.5, c3, c4)
+					local c5x = GetHSVTransition(stageProg, c3, c34)
+					SetGradA(tails[5], "HORIZONTAL", c5x, c34)
+					
+				elseif inf.startPoint == "LEFT" then
+					local c23 = GetHSVTransition(0.5, c2, c3)
+					local c5x = GetHSVTransition(stageProg, c2, c23)
+					SetGradA(tails[5], "VERTICAL", c23, c5x)
+				
+				else
+					local c41 = GetHSVTransition(0.5, c4, c1)
+					local c5x = GetHSVTransition(stageProg, c4, c41)
+					SetGradA(tails[5], "VERTICAL", c5x, c41)	
+				end
+			end
+		end
+	end
+end
+
+local function BorderSet1LineCorner(f, update)
+	local inf = f.info
+	local tails = inf.tail.list
+	if not(update) then
+		for _, v in pairs(tails) do
+			v:ClearAllPoints()
+		end
+		if inf.mirror then
+			if inf.startPoint == "TOPLEFT" then			
+				tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+				tails[2]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+				tails[3]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+				tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT")
+			elseif inf.startPoint == "TOPRIGHT" then				
+				tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+				tails[2]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+				tails[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+				tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT")
+			elseif inf.startPoint == "BOTTOMRIGHT" then			
+				tails[1]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+				tails[2]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+				tails[3]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+				tails[4]:SetPoint("TOPLEFT", f, "TOPLEFT")				
+			else			
+				tails[1]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+				tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+				tails[3]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+				tails[4]:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+			end
+			tails[1]:SetHeight(inf.th)
+			tails[2]:SetWidth(inf.th)
+			tails[3]:SetWidth(inf.th)
+			tails[4]:SetHeight(inf.th)
+		else
+			if inf.clockwise then
+				if inf.startPoint == "TOPRIGHT" then
+					inf.tail.Set1 = f.SetHeight
+					inf.tail.Set2 = f.SetWidth				
+					tails[1]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+					tails[2]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+					tails[3]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+					tails[4]:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+				elseif inf.startPoint == "BOTTOMLEFT" then
+					inf.tail.Set1 = f.SetHeight
+					inf.tail.Set2 = f.SetWidth				
+					tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+					tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+					tails[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+					tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT")
+				elseif inf.startPoint == "TOPLEFT" then
+					inf.tail.Set1 = f.SetWidth
+					inf.tail.Set2 = f.SetHeight						
+					tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0)
+					tails[2]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, inf.th)
+					tails[3]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+					tails[4]:SetPoint("TOPLEFT", f, "TOPLEFT")		
+				else
+					inf.tail.Set1 = f.SetWidth
+					inf.tail.Set2 = f.SetHeight				
+					tails[1]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inf.th, 0)
+					tails[2]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -inf.th)
+					tails[3]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -inf.th, 0 )
+					tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT")
+				end
+			else
+				if inf.startPoint == "TOPRIGHT" then
+					inf.tail.Set1 = f.SetWidth
+					inf.tail.Set2 = f.SetHeight	
+					tails[1]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+					tails[2]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+					tails[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+					tails[4]:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+				elseif inf.startPoint == "BOTTOMLEFT" then
+					inf.tail.Set1 = f.SetWidth
+					inf.tail.Set2 = f.SetHeight				
+					tails[1]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+					tails[2]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+					tails[3]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+					tails[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT")
+				elseif inf.startPoint == "TOPLEFT" then
+					inf.tail.Set1 = f.SetHeight
+					inf.tail.Set2 = f.SetWidth				
+					tails[1]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+					tails[2]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inf.th, 0)
+					tails[3]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+					tails[4]:SetPoint("TOPLEFT", f, "TOPLEFT")		
+				else
+					inf.tail.Set1 = f.SetHeight
+					inf.tail.Set2 = f.SetWidth
+					tails[1]:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -inf.th)
+					tails[2]:SetPoint("TOPLEFT", f, "TOPLEFT", inf.th, 0)
+					tails[3]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, inf.th)
+					tails[4]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT")		
+				end
+			end
+			
+			inf.tail.Set2(tails[1], inf.th)
+			inf.tail.Set1(tails[2], inf.th)
+			inf.tail.Set2(tails[3], inf.th)
+			inf.tail.Set1(tails[4], inf.th)
+		end
+	end
+	
+	if inf.mirror then
+		tails[1]:SetWidth(f:GetWidth() - inf.th)
+		tails[2]:SetHeight(f:GetHeight() - inf.th)
+		tails[3]:SetHeight(f:GetHeight() - 2*inf.th)
+		tails[4]:SetWidth(f:GetWidth())
+	else
+		if inf.clockwise and (inf.startPoint == "TOPLEFT" or inf.startPoint == "BOTTOMRIGHT") 
+			or not(inf.clockwise) and (inf.startPoint == "TOPRIGHT" or inf.startPoint == "BOTTOMLEFT")then
+			inf.tail.size1 = f:GetWidth()
+			inf.tail.size2 = f:GetHeight()
+		else
+			inf.tail.size1 = f:GetHeight()
+			inf.tail.size2 = f:GetWidth()
+		end
+		inf.tail.Set1(tails[1], inf.tail.size1 - 2*inf.th)
+		inf.tail.Set2(tails[2], inf.tail.size2 - inf.th)
+		inf.tail.Set1(tails[3], inf.tail.size1 - inf.th)
+		inf.tail.Set2(tails[4], inf.tail.size2)
+	end
+end
+
+local function BorderUpdate1LineCorner(f, progress)
+	local inf = f.info
+	local tails = inf.tail.list
+	local oldProgress = inf.tail.old
+	
+	if inf.mirror then
+		local cornerP = inf.width / (inf.width + inf.height)
+		local updt
+		if progress < cornerP then
+			if oldProgress > cornerP or oldProgress <= 0 then
+				tails[1]:Show()
+				tails[2]:Show()				
+				updt = true
+			else
+				local stageProg = 1 - progress / cornerP
+				tails[1]:SetWidth(stageProg * (inf.width - inf.th))
+			end
+		else
+			if oldProgress >= 1 or oldProgress < cornerP then
+				tails[1]:Hide()
+				tails[2]:Show()
+				updt = true
+			else
+				local stageProg = (1 - progress) / (1 - cornerP)
+				tails[2]:SetHeight(stageProg * (inf.height - inf.th))
+			end
+		end
+		
+		if progress < (1 - cornerP) then
+			if oldProgress > (1 - cornerP) or oldProgress <= 0 then
+				tails[3]:Show()
+				tails[4]:Show()				
+				updt = true
+			else
+				local stageProg = 1 - progress / (1 - cornerP)
+				tails[3]:SetHeight(stageProg * (inf.height - 2*inf.th))
+			end
+		else
+			if oldProgress >= 1 or oldProgress < (1 - cornerP) then
+				tails[3]:Hide()
+				tails[4]:Show()
+				updt = true
+			else
+				local stageProg = (1 - progress) / cornerP
+				tails[4]:SetWidth(stageProg * (inf.width))
+			end
+		end
+		
+		if updt then
+				BorderSet1LineCorner(f, true)
+				if progress < cornerP then
+					local stageProg = 1 - progress / cornerP
+					tails[1]:SetWidth(stageProg * (inf.width - inf.th))
+				else
+					local stageProg = (1 - progress) / (1 - cornerP)
+					tails[2]:SetHeight(stageProg * (inf.height - inf.th))
+				end
+				if progress < (1 - cornerP) then
+					local stageProg = 1 - progress / (1 - cornerP)
+					tails[3]:SetHeight(stageProg * (inf.height - 2*inf.th))
+				else
+					local stageProg = (1 - progress) / cornerP
+					tails[4]:SetWidth(stageProg * (inf.width))
+				end
+		end			
+	else
+		local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2) / 2
+		if progress < cornerP then
+			if oldProgress > cornerP or oldProgress <= 0 then
+				for _, v in pairs(tails) do
+					v:Show()
+				end			
+				BorderSet1LineCorner (f, true)
+			end
+			local stageProg = 1 - progress / cornerP
+			inf.tail.Set1(tails[1], stageProg * (inf.tail.size1 - 2*inf.th))
+		elseif progress < 0.5 then
+			if oldProgress > 0.5 or oldProgress <= cornerP then
+				tails[1]:Hide()
+				tails[2]:Show()
+				tails[3]:Show()
+				tails[4]:Show()
+				BorderSet1LineCorner (f, true)
+			end
+			local stageProg = (0.5 - progress) / (0.5 - cornerP)
+			inf.tail.Set2(tails[2], stageProg * (inf.tail.size2 - inf.th))
+		elseif progress < (0.5 + cornerP) then
+			if oldProgress > (0.5 + cornerP) or oldProgress <= 0.5 then
+				tails[1]:Hide()
+				tails[2]:Hide()
+				tails[3]:Show()
+				tails[4]:Show()
+				BorderSet1LineCorner (f, true)
+			end
+			local stageProg = (0.5 + cornerP - progress) / cornerP
+			inf.tail.Set1(tails[3], stageProg * (inf.tail.size1 - inf.th))
+		else
+			if oldProgress >= 1 or oldProgress <= (1 - cornerP) then
+				tails[1]:Hide()
+				tails[2]:Hide()
+				tails[3]:Hide()
+				tails[4]:Show()
+				BorderSet1LineCorner (f, true)
+			end
+			local stageProg = (1 - progress ) / (0.5 - cornerP)
+			inf.tail.Set2(tails[4], stageProg * inf.tail.size2)
+		end
+	end
+	inf.tail.old = progress
+end
+
+local function BorderGradient1LineCorner(f, progress, elapsed)
+	local inf = f.info
+	local tails = inf.tail.list
+	local c1, c2, c3, c4 = BorderGradientCorners(inf, elapsed)
+	
+	if inf.mirror then
+		local cornerP = inf.width/(inf.width + inf.height)
+		if progress < cornerP then
+			local stageProg = progress / cornerP
+			if inf.startPoint == "TOPLEFT" then
+				local c1x = GetHSVTransition(stageProg, c2, c1)
+				
+				SetGradA(tails[1], "HORIZONTAL", c1x, c1)
+				SetGradA(tails[2], "VERTICAL", c4, c1)
+				
+			elseif inf.startPoint == "TOPRIGHT" then
+				local c1x = GetHSVTransition(stageProg, c1, c2)
+				
+				SetGradA(tails[1], "HORIZONTAL", c2, c1x)
+				SetGradA(tails[2], "VERTICAL", c3, c2)
+				
+			elseif inf.startPoint == "BOTTOMRIGHT" then
+				local c1x = GetHSVTransition(stageProg, c4, c3)
+				
+				SetGradA(tails[1], "HORIZONTAL", c3, c1x)
+				SetGradA(tails[2], "VERTICAL", c3, c2)
+				
+			else
+				local c1x = GetHSVTransition(stageProg, c3, c4)
+				
+				SetGradA(tails[1], "HORIZONTAL", c1x, c4)
+				SetGradA(tails[2], "VERTICAL", c4, c1)
+			end
+		else
+			local stageProg = (progress - cornerP)  / (1 - cornerP)
+			if inf.startPoint == "TOPLEFT" then
+				local c2x = GetHSVTransition(stageProg, c1, c4)
+
+				SetGradA(tails[2], "VERTICAL", c4, c2x)
+				
+			elseif inf.startPoint == "TOPRIGHT" then
+				local c2x = GetHSVTransition(stageProg, c2, c3)
+				
+				SetGradA(tails[2], "VERTICAL", c3, c2x)
+				
+			elseif inf.startPoint == "BOTTOMRIGHT" then
+				local c2x = GetHSVTransition(stageProg, c3, c2)
+				
+				SetGradA(tails[2], "VERTICAL", c2x, c2)
+				
+			else
+				local c2x = GetHSVTransition(stageProg, c4, c1)
+				
+				SetGradA(tails[2], "VERTICAL", c2x, c1)
+			end
+		end
+		if progress < (1 - cornerP) then
+			local stageProg = progress / (1 - cornerP)
+			if inf.startPoint == "TOPLEFT" then
+				local c3x = GetHSVTransition(stageProg, c2, c3)
+				
+				SetGradA(tails[3], "VERTICAL", c3, c3x)
+				SetGradA(tails[4], "HORIZONTAL", c3, c4)
+				
+			elseif inf.startPoint == "TOPRIGHT" then
+				local c3x = GetHSVTransition(stageProg, c1, c4)
+				
+				SetGradA(tails[3], "VERTICAL", c4, c3x)
+				SetGradA(tails[4], "HORIZONTAL", c3, c4)
+				
+			elseif inf.startPoint == "BOTTOMRIGHT" then
+				local c3x = GetHSVTransition(stageProg, c4, c1)
+				
+				SetGradA(tails[3], "VERTICAL", c3x, c1)
+				SetGradA(tails[4], "HORIZONTAL", c2, c1)
+				
+			else
+				local c3x = GetHSVTransition(stageProg, c3, c2)
+				
+				SetGradA(tails[3], "VERTICAL", c3x, c2)
+				SetGradA(tails[4], "HORIZONTAL", c2, c1)
+			end
+		else
+			local stageProg = (progress + cornerP - 1)  / cornerP
+			if inf.startPoint == "TOPLEFT" then
+				local c4x = GetHSVTransition(stageProg, c3, c4)
+
+				SetGradA(tails[4], "HORIZONTAL", c4x, c4)
+				
+			elseif inf.startPoint == "TOPRIGHT" then
+				local c4x = GetHSVTransition(stageProg, c4, c3)
+				
+				SetGradA(tails[4], "HORIZONTAL", c3, c4x)
+				
+			elseif inf.startPoint == "BOTTOMRIGHT" then
+				local c4x = GetHSVTransition(stageProg, c1, c2)
+				
+				SetGradA(tails[4], "HORIZONTAL", c2, c4x)
+				
+			else
+				local c4x = GetHSVTransition(stageProg, c2, c1)
+				
+				SetGradA(tails[4], "HORIZONTAL", c4x, c1)
+			end
+		end
+	else
+		local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2) / 2
+		if inf.clockwise then
+			if progress < cornerP then
+				local stageProg = progress / cornerP
+				if inf.startPoint == "TOPRIGHT" then
+					local c1x = GetHSVTransition(stageProg, c1, c4)
+					SetGradA(tails[1], "VERTICAL", c4, c1x)
+					SetGradA(tails[2], "HORIZONTAL", c3, c4)
+					SetGradA(tails[3], "VERTICAL", c3, c2)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+				elseif inf.startPoint == "BOTTOMLEFT" then
+					local c1x = GetHSVTransition(stageProg, c3, c2)
+					SetGradA(tails[1], "VERTICAL", c1x, c2)
+					SetGradA(tails[2], "HORIZONTAL", c2, c1)
+					SetGradA(tails[3], "VERTICAL", c4, c1)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+				elseif inf.startPoint == "TOPLEFT" then
+					local c1x = GetHSVTransition(stageProg, c2, c1)
+					SetGradA(tails[1], "HORIZONTAL", c1x, c1)
+					SetGradA(tails[2], "VERTICAL", c4, c1)
+					SetGradA(tails[3], "HORIZONTAL", c3, c4)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+				else
+					local c1x = GetHSVTransition(stageProg, c4, c3)
+					SetGradA(tails[1], "HORIZONTAL", c3, c1x)
+					SetGradA(tails[2], "VERTICAL", c3, c2)
+					SetGradA(tails[3], "HORIZONTAL", c2, c1)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+				end
+			elseif progress < 0.5 then
+				local stageProg = (progress - cornerP) / (0.5 - cornerP)
+				if inf.startPoint == "TOPRIGHT" then
+					local c2x = GetHSVTransition(stageProg, c4, c3)
+					SetGradA(tails[2], "HORIZONTAL", c3, c2x)
+					SetGradA(tails[3], "VERTICAL", c3, c2)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+				elseif inf.startPoint == "BOTTOMLEFT" then
+					local c2x = GetHSVTransition(stageProg, c2, c1)
+					SetGradA(tails[2], "HORIZONTAL", c2x, c1)
+					SetGradA(tails[3], "VERTICAL", c4, c1)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+				elseif inf.startPoint == "TOPLEFT" then
+					local c2x = GetHSVTransition(stageProg, c1, c4)
+					SetGradA(tails[2], "VERTICAL", c4, c2x)
+					SetGradA(tails[3], "HORIZONTAL", c3, c4)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+				else
+					local c2x = GetHSVTransition(stageProg, c3, c2)
+					SetGradA(tails[2], "VERTICAL", c2x, c2)
+					SetGradA(tails[3], "HORIZONTAL", c2, c1)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+				end
+			elseif progress < 0.5 + cornerP then
+				local stageProg = (progress - 0.5) / cornerP
+				if inf.startPoint == "TOPRIGHT" then
+					local c3x = GetHSVTransition(stageProg, c3, c2)
+					SetGradA(tails[3], "VERTICAL", c3x, c2)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+				elseif inf.startPoint == "BOTTOMLEFT" then
+					local c3x = GetHSVTransition(stageProg, c1, c4)
+					SetGradA(tails[3], "VERTICAL", c4, c3x)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+				elseif inf.startPoint == "TOPLEFT" then
+					local c3x = GetHSVTransition(stageProg, c4, c3)
+					SetGradA(tails[3], "HORIZONTAL", c3, c3x)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+				else
+					local c3x = GetHSVTransition(stageProg, c2, c1)
+					SetGradA(tails[3], "HORIZONTAL", c3x, c1)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+				end
+			else
+				local stageProg = (progress - 0.5 - cornerP) / (0.5 - cornerP)
+				if inf.startPoint == "TOPRIGHT" then
+					local c4x = GetHSVTransition(stageProg, c2, c3)
+					SetGradA(tails[4], "HORIZONTAL", c4x, c1)
+				elseif inf.startPoint == "BOTTOMLEFT" then
+					local c4x = GetHSVTransition(stageProg, c4, c3)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4x)
+				elseif inf.startPoint == "TOPLEFT" then
+					local c4x = GetHSVTransition(stageProg, c3, c2)
+					SetGradA(tails[4], "VERTICAL", c4x, c2)
+				else
+					local c4x = GetHSVTransition(stageProg, c1, c4)
+					SetGradA(tails[4], "VERTICAL", c4, c4x)
+				end
+			end
+		else
+			if progress < cornerP then
+				local stageProg = progress / cornerP
+				if inf.startPoint == "TOPRIGHT" then
+					local c1x = GetHSVTransition(stageProg, c1, c2)
+					SetGradA(tails[1], "HORIZONTAL", c2, c1x)
+					SetGradA(tails[2], "VERTICAL", c3, c2)
+					SetGradA(tails[3], "HORIZONTAL", c3, c4)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+				elseif inf.startPoint == "BOTTOMLEFT" then
+					local c1x = GetHSVTransition(stageProg, c3, c4)
+					SetGradA(tails[1], "HORIZONTAL", c1x, c4)
+					SetGradA(tails[2], "VERTICAL", c4, c1)
+					SetGradA(tails[3], "HORIZONTAL", c2, c1)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+				elseif inf.startPoint == "TOPLEFT" then
+					local c1x = GetHSVTransition(stageProg, c2, c3)
+					SetGradA(tails[1], "VERTICAL", c3, c1x)
+					SetGradA(tails[2], "HORIZONTAL", c3, c4)
+					SetGradA(tails[3], "VERTICAL", c4, c1)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+				else
+					local c1x = GetHSVTransition(stageProg, c4, c1)
+					SetGradA(tails[1], "VERTICAL", c1x, c1)
+					SetGradA(tails[2], "HORIZONTAL", c2, c1)
+					SetGradA(tails[3], "VERTICAL", c3, c2)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+				end
+			elseif progress < 0.5 then
+				local stageProg = (progress - cornerP) / (0.5 - cornerP)
+				if inf.startPoint == "TOPRIGHT" then
+					local c2x = GetHSVTransition(stageProg, c2, c3)
+					SetGradA(tails[2], "VERTICAL", c3, c2x)
+					SetGradA(tails[3], "HORIZONTAL", c3, c4)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+				elseif inf.startPoint == "BOTTOMLEFT" then
+					local c2x = GetHSVTransition(stageProg, c4, c1)
+					SetGradA(tails[2], "VERTICAL", c2x, c1)
+					SetGradA(tails[3], "HORIZONTAL", c2, c1)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+				elseif inf.startPoint == "TOPLEFT" then
+					local c2x = GetHSVTransition(stageProg, c3, c4)
+					SetGradA(tails[2], "HORIZONTAL", c2x, c4)
+					SetGradA(tails[3], "VERTICAL", c4, c1)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+				else
+					local c2x = GetHSVTransition(stageProg, c1, c2)
+					SetGradA(tails[2], "HORIZONTAL", c2, c2x)
+					SetGradA(tails[3], "VERTICAL", c3, c2)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+				end
+			elseif progress < 0.5 + cornerP then
+				local stageProg = (progress - 0.5) / cornerP
+				if inf.startPoint == "TOPRIGHT" then
+					local c3x = GetHSVTransition(stageProg, c3, c4)
+					SetGradA(tails[3], "HORIZONTAL", c3x, c4)
+					SetGradA(tails[4], "VERTICAL", c4, c1)
+				elseif inf.startPoint == "BOTTOMLEFT" then
+					local c3x = GetHSVTransition(stageProg, c1, c2)
+					SetGradA(tails[3], "HORIZONTAL", c2, c3x)
+					SetGradA(tails[4], "VERTICAL", c3, c2)
+				elseif inf.startPoint == "TOPLEFT" then
+					local c3x = GetHSVTransition(stageProg, c4, c1)
+					SetGradA(tails[3], "VERTICAL", c3x, c1)
+					SetGradA(tails[4], "HORIZONTAL", c2, c1)
+				else
+					local c3x = GetHSVTransition(stageProg, c2, c3)
+					SetGradA(tails[3], "VERTICAL", c3, c3x)
+					SetGradA(tails[4], "HORIZONTAL", c3, c4)
+				end
+			else
+				local stageProg = (progress - 0.5 - cornerP) / (0.5 - cornerP)
+				if inf.startPoint == "TOPRIGHT" then
+					local c4x = GetHSVTransition(stageProg, c4, c1)
+					SetGradA(tails[4], "VERTICAL", c4x, c1)
+				elseif inf.startPoint == "BOTTOMLEFT" then
+					local c4x = GetHSVTransition(stageProg, c2, c3)
+					SetGradA(tails[4], "VERTICAL", c3, c4x)
+				elseif inf.startPoint == "TOPLEFT" then
+					local c4x = GetHSVTransition(stageProg, c1, c2)
+					SetGradA(tails[4], "HORIZONTAL", c2, c4x)
+				else
+					local c4x = GetHSVTransition(stageProg, c3, c4)
+					SetGradA(tails[4], "HORIZONTAL", c4x, c4)
+				end
+			end
+		end
+	end
+end
+
+local borderF = {
+	["TOPLEFT"] = {
+		[1] = {
+			Set = BorderSet1LineCorner,
+			Update = BorderUpdate1LineCorner,
+			Gradient = BorderGradient1LineCorner,
+			tailN = 4
+			},
+		[2] = {
+			Set = BorderSet2LinesCorner,
+			Update = BorderUpdate2LinesCorner,
+			Gradient = BorderGradient2LinesCorner,
+			tailN = 4
+			},
+		[4] = {
+			Set = BorderSet4LinesCorner,
+			Update = BorderUpdate4LinesCorner,
+			Gradient = BorderGradient4LinesCorner,
+			tailN = 8
+			}
+	},
+	["TOP"] = {
+		[1] = {
+			Set = BorderSet1LineCenter,
+			Update = BorderUpdate1LineCenter,
+			Gradient = BorderGradient1LineCenter,
+			tailN = 5
+			},
+		[2] = {
+			Set = BorderSet2LinesCenter,
+			Update = BorderUpdate2LinesCenter,
+			Gradient = BorderGradient2LinesCenter,
+			tailN = 6
+			},
+		[4] = {
+			Set = BorderSet4LinesCenter,
+			Update = BorderUpdate4LinesCenter,
+			Gradient = BorderGradient4LinesCenter,
+			tailN = 8
+			}
+	}
+}
+
+borderF["TOPRIGHT"] = borderF["TOPLEFT"]
+borderF["BOTTOMRIGHT"] = borderF["TOPLEFT"]
+borderF["BOTTOMLEFT"] = borderF["TOPLEFT"]
+borderF["LEFT"] = borderF["TOP"]
+borderF["BOTTOM"] = borderF["TOP"]
+borderF["RIGHT"] = borderF["TOP"]
 
 --Pixel Glow Functions--
 local pCalc1 = function(progress,s,th,p)
