@@ -2427,6 +2427,323 @@ borderF["LEFT"] = borderF["TOP"]
 borderF["BOTTOM"] = borderF["TOP"]
 borderF["RIGHT"] = borderF["TOP"]
 
+do --New Pixel Glow--
+
+-- Default Pixel Glow options --
+local pixelDefalut = {
+	color = {0.95,0.95,0.32,1},
+	N = 8,
+	frequency = 0.25,
+	th = 1,
+	xOffset = 0,
+	yOffset = 0,
+	key = "",
+	gradientFrequency = 0,
+	gradientPhase = 0,
+	bling = true
+}
+
+-- Updates corner point progress and arranges line tails --
+local function PixelUpdateInfo(f)
+	local width, height = f:GetSize()
+	if width ~= f.info.width or height ~= f.info.height then
+		if not((width + height) > 0) then
+				return false
+		end
+		local perimeter = 2*(width + height)
+		f.info.p = {
+			[1] = (width - f.info.length) / perimeter,
+			[2] = width / perimeter,
+			[3] = (width + height - f.info.length) / perimeter,
+			[4] = (width + height) / perimeter,
+			[5] = (2*width + height - f.info.length) / perimeter,
+			[6] = (2*width + height) / perimeter,
+			[7] = (perimeter - f.info.length) / perimeter,
+			[8] = 1
+		}
+		if f.info.gradient then 
+			f.info.gradientStep = f.info.length / perimeter
+		end
+		
+		f.info.add[1]:ClearAllPoints()
+		f.info.add[1]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -f.info.th)
+		f.info.add[1]:SetWidth(f.info.th)
+		
+		f.info.add[2]:ClearAllPoints()
+		f.info.add[2]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", f.info.th, 0)
+		f.info.add[2]:SetHeight(f.info.th)
+		
+		f.info.add[3]:ClearAllPoints()
+		f.info.add[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, f.info.th)
+		f.info.add[3]:SetWidth(f.info.th)
+		
+		f.info.add[4]:ClearAllPoints()
+		f.info.add[4]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -f.info.th, 0)
+		f.info.add[4]:SetHeight(f.info.th)
+		
+		f.info.width = width
+		f.info.height = height
+		return true, true
+	end
+	return true, false
+end
+
+local function PixelSetLine(f, texN, progress)
+	local tex = f.textures[texN]
+	local p = f.info.p
+	local length = f.info.length
+	local th = f.info.th
+	
+	tex:ClearAllPoints()
+	if progress < p[1] then
+			tex: SetWidth(length)
+			tex: SetHeight(th)
+	elseif progress < p[2] then
+			tex:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
+			tex:SetHeight(th)
+	elseif progress < p[3] then
+			tex:SetWidth(th)
+			tex:SetHeight(length)
+	elseif progress < p[4] then
+			tex:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
+			tex:SetWidth(th)
+	elseif progress < p[5] then
+			tex:SetWidth(length)
+			tex:SetHeight(th)
+	elseif progress < p[6] then
+			tex:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
+			tex:SetHeight(th)
+	elseif progress < p[7] then
+			tex:SetWidth(th)
+			tex:SetHeight(length)		
+	else
+			tex:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)
+			tex:SetWidth(th)
+	end	
+end
+
+local function PixelUpdateLine(f, texN, addVisible, oldProgress, progress)
+local tex = f.textures[texN]
+local p = f.info.p
+local width = f.info.width
+local height = f.info.height
+local length = f.info.length
+local th = f.info.th
+	if progress < p[1] then
+		if oldProgress > p[1] then
+			tex: ClearAllPoints()
+			tex: SetWidth(length)
+			tex: SetHeight(th)
+		end
+		tex:SetPoint("TOPRIGHT", f, "TOPRIGHT", -progress / p[1] * (width - length), 0)
+		
+	elseif progress < p[2] then
+		if oldProgress > p[2] or oldProgress < p[2] then
+			tex:ClearAllPoints()
+			tex:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
+			tex:SetHeight(th)
+		end
+		addVisible[1] = true
+		local stageProg = (progress - p[1]) / (p[2] - p[1])
+		tex:SetWidth((1 - stageProg) * (length - th) + th)
+		f.info.add[1]:SetHeight(stageProg * (length - th))
+		
+	elseif progress < p[3] then
+		if oldProgress > p[3] or oldProgress < p[2] then
+			tex:ClearAllPoints()
+			tex:SetWidth(th)
+			tex:SetHeight(length)
+		end
+		tex:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -(progress - p[2]) / (p[3] - p[2])*(height - length))
+	elseif progress < p[4] then
+		if oldProgress > p[4] or oldProgress > p[3] then
+			tex:ClearAllPoints()
+			tex:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
+			tex:SetWidth(th)
+		end		
+		addVisible[2] = true
+		local stageProg = (progress - p[3]) / (p[4] - p[3])
+		tex:SetHeight((1 - stageProg) * (length - th) + th)
+		f.info.add[2]:SetWidth(stageProg * (length - th))
+		
+	elseif progress < p[5] then
+		if oldProgress > p[5] or oldProgress < p[4] then
+			tex:ClearAllPoints()
+			tex:SetWidth(length)
+			tex:SetHeight(th)
+		end
+		tex:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", (progress - p[4]) / (p[5] - p[4]) * (width - length), 0)
+		
+	elseif progress < p[6] then
+		if oldProgress > p[6] or oldProgress < p[7] then
+			tex:ClearAllPoints()
+			tex:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
+			tex:SetHeight(th)
+		end		
+		addVisible[3] = true
+		local stageProg = (progress - p[5]) / (p[6] - p[5])
+		tex:SetWidth((1 - stageProg) * (length - th) + th)
+		f.info.add[3]:SetHeight(stageProg * (length - th))
+		
+	elseif progress < p[7] then
+		if oldProgress < p[6] or oldProgress > p[7] then
+			tex:ClearAllPoints()
+			tex:SetWidth(th)
+			tex:SetHeight(length)
+		end	
+		tex:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, (progress - p[6]) / (p[7] - p[6]) * (height - length), 0)
+		
+	else
+		if oldProgress < p[7] then
+			tex:ClearAllPoints()
+			tex:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)
+			tex:SetWidth(th)
+		end
+		addVisible[4] = true
+		local stageProg = (progress - p[7]) / (1 - p[7])
+		tex:SetHeight((1 - stageProg) * (length - th) + th)
+		f.info.add[4]:SetWidth(stageProg * (length - th))
+	end	
+end
+
+local function PixelGradientLine(f, texN, progress, c1, c2)
+	local tex = f.textures[texN]
+	local p = f.info.p
+	if progress < p[1] then
+		SetGradA(tex, "HORIZONTAL", c2, c1)
+		
+	elseif progress < p[2] then
+		local stageProg = (progress - p[1])/(p[2] - p[1])
+		local c12 = GetHSVTransition ((1-stageProg), c1, c2)
+		SetGradA(tex, "HORIZONTAL", c12, c1)
+		SetGradA(f.info.add[1], "VERTICAL", c2, c12)
+		
+	elseif progress < p[3] then
+		SetGradA(tex, "VERTICAL", c2, c1)
+		
+	elseif progress < p[4] then
+		local stageProg = (progress - p[3])/(p[4] - p[3])
+		local c12 = GetHSVTransition ((1-stageProg), c1, c2)
+		SetGradA(tex, "VERTICAL", c12, c1)
+		SetGradA(f.info.add[2], "HORIZONTAL", c12, c2)
+		
+	elseif progress < p[5] then
+		SetGradA(tex, "HORIZONTAL", c1, c2)
+		
+	elseif progress < p[6] then
+		local stageProg = (progress - p[5])/(p[6] - p[5])
+		local c12 = GetHSVTransition ((1-stageProg), c1, c2)
+		SetGradA(tex, "HORIZONTAL", c1, c12)
+		SetGradA(f.info.add[3], "VERTICAL", c12, c2)
+		
+	elseif progress < p[7] then
+		SetGradA(tex, "VERTICAL", c1, c2)
+		
+	else
+		local stageProg = (progress - p[7])/(1 - p[7])
+		local c12 = GetHSVTransition ((1 - stageProg), c1, c2)
+		SetGradA(tex, "VERTICAL", c1, c12)
+		SetGradA(f.info.add[4], "HORIZONTAL", c2, c12)
+	end	
+end
+
+local function PixelUpdate(self, elapsed)
+	local oldProgress = self.timer
+	local inf = self.info
+	self.timer = self.timer + elapsed * inf.frequency
+	self.timer = self.timer%1
+	
+	local nonZero, change = PixelUpdateInfo(self)
+	if not(nonZero) then return end
+	
+	local tex = self.textures
+	local addVisible = {}
+	local g = inf.gradient
+	
+	if g then
+		local gN = #g
+		inf.gradientPhase = inf.gradientPhase + inf.gradientFrequency * elapsed
+		for i = 1, inf.N do
+			local old = (oldProgress + (i-1)/inf.N)%1
+			local new = (self.timer + (i-1)/inf.N)%1
+			if change then
+				PixelSetLine(self, i, new)
+			end
+			PixelUpdateLine(self, i, addVisible, old, new)
+			
+			local p1 = (new + inf.gradientPhase + 0.001)%1
+			local p2 = (p1 + inf.gradientStep)%1
+			local c1 = GetHSVTransition ((p1 * gN)%1 , g[ceil(p1 * gN)], g[ceil(p1 * gN)%gN + 1]) 
+			local c2 = GetHSVTransition ((p2 * gN)%1 , g[ceil(p2 * gN)], g[ceil(p2 * gN)%gN + 1]) 
+			PixelGradientLine(self, i, new, c1, c2)
+		end
+	else
+		for i = 1, inf.N do
+			local old = (oldProgress + (i - 1) / inf.N)%1
+			local new = (self.timer + (i - 1) / inf.N)%1
+			if change then
+				PixelSetLine(self, i, new)
+			end
+			PixelUpdateLine(self, i, addVisible, old, new)
+		end
+	end
+	
+	for i = 1,4 do
+		if addVisible[i] ~= inf.addVisible[i] then inf.add[i]:SetShown(addVisible[i]) end
+	end
+	inf.addVisible = addVisible
+end
+
+function lib.GradientPixelGlow_Start(r,options)
+	if not r then	return end
+	for k,v in pairs(pixelDefalut) do
+		options[k] = options[k] or v
+	end
+	local N = options.N
+	
+	addFrameAndTex(r,options.color,"_PixelGlow",options.key,N+4,options.xOffset,options.yOffset,textureList.white,{0,1,0,1},nil,options.frameLevel)
+	local f = r["_PixelGlow"..options.key]
+	
+	local width,height = f:GetSize()
+	local length
+	if options.length then
+		length = min(options.length, width, height)
+	else 
+		length = min(math.floor((width+height)/N*1.25), width, height)
+	end
+	
+	f.info.width = nil
+	f.timer = f.timer or 0.0001
+	f.info = f.info or {}
+	f.info.th = options.th
+	f.info.N = N
+	f.info.length = length
+	f.info.frequency = -options.frequency
+	f.info.add = {f.textures[N + 1], f.textures[N + 2], f.textures[N + 3], f.textures[N + 4]}
+	f.info.addVisible = {}
+	f.info.gradient = options.gradient
+	f.info.gradientPhase = f.info.gradientPhase or options.gradientPhase
+	f.info.gradientFrequency = options.gradientFrequency
+	f.info.gradientStep = length/(width+height)	
+	
+	PixelUpdateInfo(f)
+	for i = 1, N do
+		local new = (f.timer + (i-1)/N)%1
+		local old = (new + 0.5)%1
+		PixelUpdateLine(f, i, f.info.addVisible, old, new)
+	end
+	
+	for i = 1,4 do
+		f.info.add[i]:SetShown(f.info.addVisible[i])
+	end
+	
+	f:SetScript("OnUpdate",PixelUpdate)
+	
+end
+
+end	--New Pixel Glow--
+
+
 --Pixel Glow Functions--
 local pCalc1 = function(progress,s,th,p)
     local c
