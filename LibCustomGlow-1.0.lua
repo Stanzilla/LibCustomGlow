@@ -2598,6 +2598,7 @@ function lib.BorderPulse_Start(r, options)
 		frequency = options.frequency,
 		sine = options.sine,
 		forceEnd = options.forceEnd,
+		gradient = options.gradient,
 		gradientFrequency = options.gradientFrequency,
 		BorderSet = BorderSet,
 		BorderUpdate = BorderUpdate,
