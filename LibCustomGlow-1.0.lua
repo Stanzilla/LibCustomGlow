@@ -6,7 +6,7 @@ https://www.wowace.com/projects/libbuttonglow-1-0
 -- luacheck: globals CreateFromMixins ObjectPoolMixin CreateTexturePool CreateFramePool
 
 local MAJOR_VERSION = "LibCustomGlow-1.0"
-local MINOR_VERSION = 20
+local MINOR_VERSION = 21
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub.") end
 local lib, oldversion = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
@@ -76,9 +76,10 @@ local FramePoolResetter = function(framePool,frame)
         frame.masks = nil
     end
     frame.textures = {}
-    frame.info = {}
+    frame.inf = {}
     frame.name = nil
     frame.timer = nil
+		frame:SetAlpha(1)
     frame:Hide()
     frame:ClearAllPoints()
 end
@@ -86,40 +87,48 @@ local GlowFramePool = CreateFramePool("Frame",GlowParent,nil,FramePoolResetter)
 lib.GlowFramePool = GlowFramePool
 
 local function addFrameAndTex(r,color,name,key,N,xOffset,yOffset,texture,texCoord,desaturated,frameLevel)
-    key = key or ""
+	key = key or ""
 	frameLevel = frameLevel or 8
-    if not r[name..key] then
-        r[name..key] = GlowFramePool:Acquire()
-        r[name..key]:SetParent(r)
-        r[name..key].name = name..key
-    end
-    local f = r[name..key]
+	xOffset = xOffset or 0
+	yOffset = yOffset or 0
+	local update = true
+	
+	if not r[name..key] then
+			r[name..key] = GlowFramePool:Acquire()
+			r[name..key]:SetParent(r)
+			r[name..key].name = name..key
+			update = false
+	end
+	local f = r[name..key]
 	f:SetFrameLevel(r:GetFrameLevel()+frameLevel)
-    f:SetPoint("TOPLEFT",r,"TOPLEFT",-xOffset+0.05,yOffset+0.05)
-    f:SetPoint("BOTTOMRIGHT",r,"BOTTOMRIGHT",xOffset,-yOffset+0.05)
-    f:Show()
+	f:SetPoint("TOPLEFT",r,"TOPLEFT",-xOffset,yOffset)
+	f:SetPoint("BOTTOMRIGHT",r,"BOTTOMRIGHT",xOffset,-yOffset)
+	f:Show()
 
-    if not f.textures then
-        f.textures = {}
-    end
-
-    for i=1,N do
-        if not f.textures[i] then
-            f.textures[i] = GlowTexPool:Acquire()
-            f.textures[i]: SetTexture(texture)
-            f.textures[i]: SetTexCoord(texCoord[1],texCoord[2],texCoord[3],texCoord[4])
-            f.textures[i]: SetDesaturated(desaturated)
-            f.textures[i]: SetParent(f)
-            f.textures[i]: SetDrawLayer("ARTWORK",7)
-        end
-        f.textures[i]:SetVertexColor(color[1],color[2],color[3],color[4])
-        f.textures[i]:Show()
-    end
-    while #f.textures>N do
-        GlowTexPool:Release(f.textures[#f.textures])
-        table.remove(f.textures)
-    end
+	if not f.textures then
+			f.textures = {}
+	end
+	
+	for i=1,N do
+			if not f.textures[i] then
+					f.textures[i] = GlowTexPool:Acquire()
+					f.textures[i]: SetTexture(texture)
+					f.textures[i]: SetTexCoord(texCoord[1],texCoord[2],texCoord[3],texCoord[4])
+					f.textures[i]: SetDesaturated(desaturated)
+					f.textures[i]: SetParent(f)
+					f.textures[i]: SetDrawLayer("ARTWORK",7)
+			end
+			f.textures[i]:SetVertexColor(color[1],color[2],color[3],color[4])
+			f.textures[i]:Show()
+	end
+	while #f.textures>N do
+			GlowTexPool:Release(f.textures[#f.textures])
+			table.remove(f.textures)
+	end
+	return update
 end
+
+
 
 
 local hsvFrame = CreateFrame("Colorselect")
@@ -156,38 +165,52 @@ local function SetGradA(texture, direction, c1, c2)
 	texture:SetGradientAlpha(direction, c1[1], c1[2], c1[3], c1[4], c2[1], c2[2], c2[3], c2[4])
 end
 
---Return copy of default table with elements present in options replaced--
-local function AcquireOptions(options, default)
-	options = options or {}
-	local newOptions = {}
+local function DeepCopy(original)
+	local copy
+	if type(original) == "table" then
+		copy = {}
+		for k,v in pairs(original) do
+			copy[k] = DeepCopy(v)
+		end
+	else
+		copy = original
+	end
+	return copy
+end
+
+--Return copy of options table with added missing elements from default--
+local function AcquireOptions(options, default, internal)
+	if not(internal) then 
+		options = DeepCopy(options) or {}
+	else
+		options = options or {}
+	end
 	for k,v in pairs(default) do
 		if type(v) == "table" then 
-			newOptions[k] = AcquireOptions(options[k], v)
+			options[k] = AcquireOptions(options[k], v, true)
 		else
-			if options[k] ~= nil then
-				newOptions[k] = options[k]
-			else
-				newOptions[k] = v
+			if options[k] == nil then
+				options[k] = v
 			end
 		end
 	end
-	return newOptions
+	return options
 end
 
 ---- Tails Funcitons ------------------------------------------------------------------------------------------------
 
-local function BorderGradientCorners(inf, elapsed, g)
+local function BorderGradientCorners(inf, elapsed)
 	local c1, c2, c3, c4, p1, p2, p3, p4
-	g = g or inf.gradient
+	g = inf.gradient
 	local gN = #g
-	local gProg = inf.gProgress or 0
-	gProg = (gProg + elapsed * inf.gFrequency)%1
-	inf.gProgress = gProg
+	local gProgress = inf.gProgress or 0
+	gProgress = (gProgress + elapsed * inf.gradientFrequency)%1
+	inf.gProgress = gProgress
 	
-	p1 = (gProg + 0.001)%1
-	p2 = (gProg + inf.width / (inf.width + inf.height) / 2)%1
-	p3 = (gProg + 0.5) %1
-	p4 = (gProg + 0.5 + inf.width / (inf.width + inf.height) / 2)%1
+	p1 = (gProgress + 0.001)%1
+	p2 = (gProgress + inf.width / (inf.width + inf.height) / 2)%1
+	p3 = (gProgress + 0.5) %1
+	p4 = (gProgress + 0.5 + inf.width / (inf.width + inf.height) / 2)%1
 	
 	c1 = GetHSVTransition ((p1 * gN) % 1 , g[ceil(p1 * gN)], g[ceil(p1 * gN) % gN + 1])
 	c2 = GetHSVTransition ((p2 * gN) % 1 , g[ceil(p2 * gN)], g[ceil(p2 * gN) % gN + 1])
@@ -2444,6 +2467,195 @@ borderF["LEFT"] = borderF["TOP"]
 borderF["BOTTOM"] = borderF["TOP"]
 borderF["RIGHT"] = borderF["TOP"]
 
+local function BorderReverse(startPoint, N)
+	if N == 2 then
+		if startPoint == "TOP" or startPoint == "BOTTOM" then
+			return "LEFT"
+		elseif startPoint == "LEFT" or startPoint == "RIGHT" then
+			return "TOP"
+		elseif startPoint == "TOPLEFT" or startPoint == "BOTTOMRIGHT" then
+			return "TOPRIGHT"
+		elseif startPoint == "BOTTOMLEFT" or startPoint == "TOPRIGHT" then
+			return "TOPLEFT"
+		end
+	elseif N == 1 then
+		if startPoint == "TOP" then
+			return "BOTTOM"
+		elseif startPoint == "TOPRIGHT" then
+			return "BOTTOMLEFT"
+		elseif startPoint == "RIGHT" then
+			return "LEFT"
+		elseif startPoint == "BOTTOMRIGHT" then
+			return "TOPLEFT"
+		elseif startPoint == "BOTTOM" then
+			return "TOP"
+		elseif startPoint == "BOTTOMLEFT" then
+			return "TOPRIGHT"
+		elseif startPoint == "LEFT" then
+			return "RIGHT"
+		elseif startPoint == "TOPLEFT" then
+			return "BOTTOMRIGHT"
+		end
+	else
+		if startPoint == "TOP" or startPoint == "BOTTOM" or startPoint == "LEFT" or startPoint == "RIGHT" then
+			return "TOPLEFT"
+		elseif startPoint == "TOPLEFT" or startPoint == "BOTTOMRIGHT" or startPoint == "BOTTOMLEFT" or startPoint == "TOPRIGHT" then
+			return "TOP"
+		end
+	end
+end
+
+local function BorderPulseUpdate(self, elapsed)
+	local progress = self.timer + elapsed * self.inf.frequency * (self.inf.sign or 1)
+	local newProg = self.inf.sine and math.sin(1.5708 * progress) or progress
+	
+	if self.inf.finish and (self.inf.forceEnd or progress > 1) then
+		GlowFramePool:Release(self)
+		return
+	end
+	
+	local width,height = self:GetSize()
+	
+	if self.inf.width ~= width or self.inf.height ~= height then
+		self.inf.BorderSet(self, true)
+		self.inf.width = width
+		self.inf.height = height
+	end
+	if progress < 0 or  progress > 1 then
+		self.inf.tail.old = progress
+		self.inf.sign = -self.inf.sign
+		progress = 1 - progress%1
+		
+		if self.inf.tail.mirror then
+			self.inf.tail.startPoint = BorderReverse(self.inf.tail.startPoint, self.inf.N)
+			if self.inf.N == 4 then
+				self.inf.BorderSet = borderF[self.inf.tail.startPoint][self.inf.N].Set
+				self.inf.BorderUpdate = borderF[self.inf.tail.startPoint][self.inf.N].Update
+				self.inf.BorderGradient = borderF[self.inf.tail.startPoint][self.inf.N].Gradient
+			end
+		else
+			self.inf.tail.clockwise = not(self.inf.tail.clockwise)
+		end
+		self.inf.BorderSet(self)
+	end
+	
+	self.inf.BorderUpdate(self, newProg)
+	if self.inf.gradient then
+		self.inf.BorderGradient(self, newProg, elapsed)
+	end
+	self.timer = progress
+end
+
+local borderPulseTemplates = {
+	default = {
+		N = 2,
+		th = 1,
+		startPoint = "TOPRIGHT",
+		clockwise = false,
+		mirror = false,
+		frequency = 1.5,
+		sine = true,
+		color = {.8, .8, .5, .9},
+		gradient = nil,
+		gradientFrequency = .7,
+		startBling = true,
+		repeatBling = true,
+		forceEnd = false,
+		blingOptions = {
+			reverse = true,
+			noTails = true,
+			sine = false,
+			duration = 0.5
+		},
+		key = nil,
+		xOffset = nil,
+		yOffset = nil,
+		frameLevel = nil
+	}
+}
+
+
+function lib.BorderPulse_Start(r, options)
+	if not r then	return end
+	local template = options.template and blingTemplates[options.template] or borderPulseTemplates.default
+	options = AcquireOptions(options, template)
+	
+
+	local BorderSet = borderF[options.startPoint][options.N].Set
+	local BorderUpdate = borderF[options.startPoint][options.N].Update
+	local BorderGradient = borderF[options.startPoint][options.N].Gradient
+	local tailN = borderF[options.startPoint][options.N].tailN
+
+		
+	local update = addFrameAndTex(r,options.color,"_BorderPulse",options.key,tailN,options.xOffset,options.yOffset,textureList.white,{0,1,0,1},nil,options.frameLevel)
+	local f = r["_BorderPulse"..(options.key or "")]
+	
+	f.timer = f.timer or 0.001
+
+	f.inf = {
+		N = options.N,
+		th = options.th,
+		frequency = options.frequency,
+		sine = options.sine,
+		forceEnd = options.forceEnd,
+		gradientFrequency = options.gradientFrequency,
+		BorderSet = BorderSet,
+		BorderUpdate = BorderUpdate,
+		BorderGradient = BorderGradient,
+		width = f:GetWidth(),
+		height = f:GetHeight(),
+		gProgress = f.inf and  f.inf.gProgress or 0,
+		sign = f.inf and f.inf.sign or 1
+	}
+	
+	f.inf.tail = {
+		clockwise = options.clockwise,
+		list = f.textures,
+		startPoint = options.startPoint,
+		mirror = options.mirror,
+		old =  f.inf and f.inf.old or 0
+	}
+	
+	if f.inf.sign == -1 then
+		if f.inf.tail.mirror then
+			f.inf.tail.startPoint = BorderReverse(f.inf.tail.startPoint, f.inf.N)
+			if f.inf.N == 4 then
+				f.inf.BorderSet = borderF[f.inf.tail.startPoint][f.inf.N].Set
+				f.inf.BorderUpdate = borderF[f.inf.tail.startPoint][f.inf.N].Update
+				f.inf.BorderGradient = borderF[f.inf.tail.startPoint][f.inf.N].Gradient
+			end
+		else
+			f.inf.tail.clockwise = not(f.inf.tail.clockwise)
+		end
+	end
+	
+	f.inf.BorderSet(f)
+	BorderPulseUpdate(f, .001)
+	
+	if options.startBling then
+		if not(update) then
+			f:Hide()
+		end
+		if not(update) or options.repeatBling then
+			options.blingOptions.midCallback = function() if f.name and f.name == "_BorderPulse"..(options.key or "") then f:Show() end end
+			options.blingOptions.endCallback = function() if f.name and f.name == "_BorderPulse"..(options.key or "") then f:SetScript("OnUpdate", BorderPulseUpdate) end end
+			lib.Bling(r, options.blingOptions)
+		end
+	end
+end
+	
+function lib.BorderPulse_Stop(r, key, force)
+	if not r or not r["_BorderPulse"..(key or "")] then
+		return
+	end
+	if force then 
+		GlowFramePool:Release(r["_BorderPulse"..(key or "")])
+	else
+		r["_BorderPulse"..(key or "")].inf.finish = true
+	end
+end
+
+
 ---- Flash ------------------------------------------------------------------------------------------------
 local function FlashSetSplit(f, secondStage)
 	local inf = f.inf
@@ -2802,33 +3014,37 @@ local function BlingUpdate(self, elapsed)
 	self.timer = progress	
 end
 
+
 local blingTemplates = {
 	default = {
 		flash = "split",
-		direction = "HORIZONTAL",
-		startPoint = "TOP",
+		startPoint = "TOPLEFT",
+		color = {.9, .9, .9, .75},
+		gradient = nil,
+		gradientFrequency = 0.75,
 		noTails = false,
 		sine = true,
 		tails = {
 			th = 1,
 			N = 2,
+			color = nil,
 			startPoint = "TOPRIGHT",
 			clockwise = false,
 			mirror = false
 		},
 		reverse = false,
-		duration = 0.4,
-		key = "",
-		xOffset = 0,
-		yOffset = 0,
-		frameLevel = 8
+		duration = .65,
+		midCallback = nil,
+		endCallback = nil,
+		key = nil,
+		xOffset = nil,
+		yOffset = nil,
+		frameLevel = nil
 	}
 }
 
-function lib.Bling(r, options)	
-	local midCallback = options.midCallback
-	local endCallback = options.endCallback
-	
+function lib.Bling(r, options)
+	if not r then	return end
 	local template = options.template and blingTemplates[options.template] or blingTemplates.default
 	options = AcquireOptions(options, template)
 	
@@ -2841,16 +3057,30 @@ function lib.Bling(r, options)
 	local FlashUpdate = flashF[options.flash].Update
 	local flashN = flashF[options.flash].flashN
 	
-	addFrameAndTex(r,{0.9, 0.9, 0.9, 0.75},"_Bling",options.key,tailN+flashN,options.xOffset,options.yOffset,textureList.white,{0,1,0,1},nil,options.frameLevel)
-	local f = r["_Bling"..options.key]
+	addFrameAndTex(r,options.color,"_Bling",options.key,tailN + flashN,options.xOffset,options.yOffset,textureList.white,{0,1,0,1},nil,options.frameLevel)
+	local f = r["_Bling"..(options.key or "")]
 	
 	f.timer = options.reverse and 1 or 0.001
-	f.inf = f.inf or {}
-	f.inf.reverse = options.reverse
-	f.inf.th = not(options.noTails) and options.tails.th or 0
-	f.inf.duration = options.duration
-	f.inf.noTails = options.noTails
-	f.inf.sine = options.sine
+	
+	f.inf = {
+		reverse = options.reverse,
+		th = options.tails.th,
+		duration = options.duration,
+		noTails = options.noTails,
+		sine = options.sine,
+		midCallback = options.midCallback,
+		endCallback = options.endCallback,
+		gradient = options.gradient,
+		gradientFrequency = options.gradientFrequency,
+		width = f:GetWidth(),
+		height = f:GetHeight(),
+		BorderSet = BorderSet,
+		BorderUpdate = BorderUpdate,
+		BorderGradient = BorderGradient,
+		FlashUpdate = FlashUpdate,
+		FlashSet = FlashSet
+	}
+	
 	f.inf.flash = {
 		startPoint = options.startPoint,
 		list = {},
@@ -2860,14 +3090,6 @@ function lib.Bling(r, options)
 		f.inf.flash.list[i] = f.textures[i]
 	end
 	
-	f.inf.BorderSet = BorderSet
-	f.inf.BorderUpdate = BorderUpdate
-	f.inf.BorderGradient = BorderGradient
-	f.inf.FlashUpdate = FlashUpdate
-	f.inf.FlashSet = FlashSet
-	
-	FlashSet(f)
-	
 	f.inf.tail = {
 		list = {},
 		startPoint = options.tails.startPoint,
@@ -2875,23 +3097,19 @@ function lib.Bling(r, options)
 		old = options.reverse and 1 or 0,
 		clockwise = options.tails.clockwise
 		}
-		
 	for i = 1, tailN do
 		f.inf.tail.list[i] = f.textures[i + flashN]
 	end
-	f.inf.gradient = {{1, .6, .6, 1}, {.6, 1, .6, 1}, {.6, .6, 1, 1}}
-	f.inf.gFrequency = 0.7
-	f.inf.width = f:GetWidth()
-	f.inf.height = f:GetHeight()
-	
-	f.inf.midCallback = midCallback
-	f.inf.endCallback = endCallback
-	
-	if not(options.reverse) then
-		for _,v in pairs(f.inf.tail.list) do
-			v:Hide()
+	if options.tails.color then
+		local tCol = options.tails.color
+		for _, v in pairs(f.inf.tail.list) do
+			v:SetVertexColor(tCol[1], tCol[2], tCol[3], tCol[4])
 		end
 	end
+	
+	FlashSet(f, options.reverse)
+	BlingUpdate(f, .001)
+	
 	f:SetClipsChildren(true)
 	f:SetScript("OnUpdate", BlingUpdate)
 end
@@ -2901,62 +3119,76 @@ end
 
 
 
-do --New Pixel Glow--
-
--- Default Pixel Glow options --
-local pixelDefalut = {
-	color = {0.95,0.95,0.32,1},
-	N = 8,
-	frequency = 0.25,
-	th = 1,
-	xOffset = 0,
-	yOffset = 0,
-	key = "",
-	gradientFrequency = 0,
-	gradientPhase = 0,
-	bling = true
+  -- New Pixel Glow --
+local pixelTemplates = {
+	default = {
+		N = 8,
+		th = 1,
+		color = {0.95,0.95,0.32,1},
+		gradient = nil,
+		gradientFrequency = 0.7,
+		frequency = 0.25,
+		bling = true,
+		forceEnd = false,
+		fadeDuration = 0.45,
+		startBling = true,
+		repeatBling = true,
+		blingOptions = {
+			reverse = true,
+			startPoint  = "TOPLEFT",
+			tails = {
+				N = 2,
+				clockwise = true,
+				startPoint = "TOPRIGHT"
+			}
+		},
+		key = nil,
+		xOffset = nil,
+		yOffset = nil,
+		frameLevel = nil
+	}
 }
 
--- Updates corner point progress and arranges line tails --
 local function PixelUpdateInfo(f)
 	local width, height = f:GetSize()
-	if width ~= f.info.width or height ~= f.info.height then
+	if width ~= f.inf.width or height ~= f.inf.height then
 		if not((width + height) > 0) then
 				return false
 		end
+		f.inf.length = min(f.inf.defaultLength, width - 2, height - 2)
 		local perimeter = 2*(width + height)
-		f.info.p = {
-			[1] = (width - f.info.length) / perimeter,
+		f.inf.p = {
+			[1] = (width - f.inf.length) / perimeter,
 			[2] = width / perimeter,
-			[3] = (width + height - f.info.length) / perimeter,
+			[3] = (width + height - f.inf.length) / perimeter,
 			[4] = (width + height) / perimeter,
-			[5] = (2*width + height - f.info.length) / perimeter,
+			[5] = (2*width + height - f.inf.length) / perimeter,
 			[6] = (2*width + height) / perimeter,
-			[7] = (perimeter - f.info.length) / perimeter,
+			[7] = (perimeter - f.inf.length) / perimeter,
 			[8] = 1
 		}
-		if f.info.gradient then 
-			f.info.gradientStep = f.info.length / perimeter
+		if f.inf.gradient then 
+			f.inf.gradientStep = f.inf.length / perimeter
 		end
 		
-		f.info.add[1]:ClearAllPoints()
-		f.info.add[1]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -f.info.th)
-		f.info.add[1]:SetWidth(f.info.th)
+		f.inf.add[1]:ClearAllPoints()
+		f.inf.add[1]:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -f.inf.th)
+		f.inf.add[1]:SetWidth(f.inf.th)
 		
-		f.info.add[2]:ClearAllPoints()
-		f.info.add[2]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", f.info.th, 0)
-		f.info.add[2]:SetHeight(f.info.th)
+		f.inf.add[2]:ClearAllPoints()
+		f.inf.add[2]:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", f.inf.th, 0)
+		f.inf.add[2]:SetHeight(f.inf.th)
 		
-		f.info.add[3]:ClearAllPoints()
-		f.info.add[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, f.info.th)
-		f.info.add[3]:SetWidth(f.info.th)
+		f.inf.add[3]:ClearAllPoints()
+		f.inf.add[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, f.inf.th)
+		f.inf.add[3]:SetWidth(f.inf.th)
 		
-		f.info.add[4]:ClearAllPoints()
-		f.info.add[4]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -f.info.th, 0)
-		f.info.add[4]:SetHeight(f.info.th)
+		f.inf.add[4]:ClearAllPoints()
+		f.inf.add[4]:SetPoint("TOPRIGHT", f, "TOPRIGHT", -f.inf.th, 0)
+		f.inf.add[4]:SetHeight(f.inf.th)
 		
-		f.info.width = width
-		f.info.height = height
+		f.inf.width = width
+		f.inf.height = height
 		return true, true
 	end
 	return true, false
@@ -2964,9 +3196,9 @@ end
 
 local function PixelSetLine(f, texN, progress)
 	local tex = f.textures[texN]
-	local p = f.info.p
-	local length = f.info.length
-	local th = f.info.th
+	local p = f.inf.p
+	local length = f.inf.length
+	local th = f.inf.th
 	
 	tex:ClearAllPoints()
 	if progress < p[1] then
@@ -2998,11 +3230,11 @@ end
 
 local function PixelUpdateLine(f, texN, addVisible, oldProgress, progress)
 local tex = f.textures[texN]
-local p = f.info.p
-local width = f.info.width
-local height = f.info.height
-local length = f.info.length
-local th = f.info.th
+local p = f.inf.p
+local width = f.inf.width
+local height = f.inf.height
+local length = f.inf.length
+local th = f.inf.th
 	if progress < p[1] then
 		if oldProgress > p[1] then
 			tex: ClearAllPoints()
@@ -3020,7 +3252,7 @@ local th = f.info.th
 		addVisible[1] = true
 		local stageProg = (progress - p[1]) / (p[2] - p[1])
 		tex:SetWidth((1 - stageProg) * (length - th) + th)
-		f.info.add[1]:SetHeight(stageProg * (length - th))
+		f.inf.add[1]:SetHeight(stageProg * (length - th))
 		
 	elseif progress < p[3] then
 		if oldProgress > p[3] or oldProgress < p[2] then
@@ -3038,7 +3270,7 @@ local th = f.info.th
 		addVisible[2] = true
 		local stageProg = (progress - p[3]) / (p[4] - p[3])
 		tex:SetHeight((1 - stageProg) * (length - th) + th)
-		f.info.add[2]:SetWidth(stageProg * (length - th))
+		f.inf.add[2]:SetWidth(stageProg * (length - th))
 		
 	elseif progress < p[5] then
 		if oldProgress > p[5] or oldProgress < p[4] then
@@ -3057,7 +3289,7 @@ local th = f.info.th
 		addVisible[3] = true
 		local stageProg = (progress - p[5]) / (p[6] - p[5])
 		tex:SetWidth((1 - stageProg) * (length - th) + th)
-		f.info.add[3]:SetHeight(stageProg * (length - th))
+		f.inf.add[3]:SetHeight(stageProg * (length - th))
 		
 	elseif progress < p[7] then
 		if oldProgress < p[6] or oldProgress > p[7] then
@@ -3076,13 +3308,13 @@ local th = f.info.th
 		addVisible[4] = true
 		local stageProg = (progress - p[7]) / (1 - p[7])
 		tex:SetHeight((1 - stageProg) * (length - th) + th)
-		f.info.add[4]:SetWidth(stageProg * (length - th))
+		f.inf.add[4]:SetWidth(stageProg * (length - th))
 	end	
 end
 
 local function PixelGradientLine(f, texN, progress, c1, c2)
 	local tex = f.textures[texN]
-	local p = f.info.p
+	local p = f.inf.p
 	if progress < p[1] then
 		SetGradA(tex, "HORIZONTAL", c2, c1)
 		
@@ -3090,7 +3322,7 @@ local function PixelGradientLine(f, texN, progress, c1, c2)
 		local stageProg = (progress - p[1])/(p[2] - p[1])
 		local c12 = GetHSVTransition ((1-stageProg), c1, c2)
 		SetGradA(tex, "HORIZONTAL", c12, c1)
-		SetGradA(f.info.add[1], "VERTICAL", c2, c12)
+		SetGradA(f.inf.add[1], "VERTICAL", c2, c12)
 		
 	elseif progress < p[3] then
 		SetGradA(tex, "VERTICAL", c2, c1)
@@ -3099,7 +3331,7 @@ local function PixelGradientLine(f, texN, progress, c1, c2)
 		local stageProg = (progress - p[3])/(p[4] - p[3])
 		local c12 = GetHSVTransition ((1-stageProg), c1, c2)
 		SetGradA(tex, "VERTICAL", c12, c1)
-		SetGradA(f.info.add[2], "HORIZONTAL", c12, c2)
+		SetGradA(f.inf.add[2], "HORIZONTAL", c12, c2)
 		
 	elseif progress < p[5] then
 		SetGradA(tex, "HORIZONTAL", c1, c2)
@@ -3108,7 +3340,7 @@ local function PixelGradientLine(f, texN, progress, c1, c2)
 		local stageProg = (progress - p[5])/(p[6] - p[5])
 		local c12 = GetHSVTransition ((1-stageProg), c1, c2)
 		SetGradA(tex, "HORIZONTAL", c1, c12)
-		SetGradA(f.info.add[3], "VERTICAL", c12, c2)
+		SetGradA(f.inf.add[3], "VERTICAL", c12, c2)
 		
 	elseif progress < p[7] then
 		SetGradA(tex, "VERTICAL", c1, c2)
@@ -3117,15 +3349,27 @@ local function PixelGradientLine(f, texN, progress, c1, c2)
 		local stageProg = (progress - p[7])/(1 - p[7])
 		local c12 = GetHSVTransition ((1 - stageProg), c1, c2)
 		SetGradA(tex, "VERTICAL", c1, c12)
-		SetGradA(f.info.add[4], "HORIZONTAL", c2, c12)
+		SetGradA(f.inf.add[4], "HORIZONTAL", c2, c12)
 	end	
 end
 
 local function PixelUpdate(self, elapsed)
 	local oldProgress = self.timer
-	local inf = self.info
+	local inf = self.inf
 	self.timer = self.timer + elapsed * inf.frequency
 	self.timer = self.timer%1
+	
+	if inf.finish then
+		inf.fading = inf.fading or 0
+		if inf.forceEnd or inf.fading > inf.fadeDuration then
+			GlowFramePool:Release(self)
+			return
+		else
+			inf.fading = inf.fading or 0
+			self:SetAlpha(1 - inf.fading / inf.fadeDuration)
+			inf.fading = inf.fading + elapsed
+		end
+	end
 	
 	local nonZero, change = PixelUpdateInfo(self)
 	if not(nonZero) then return end
@@ -3136,7 +3380,7 @@ local function PixelUpdate(self, elapsed)
 	
 	if g then
 		local gN = #g
-		inf.gradientPhase = inf.gradientPhase + inf.gradientFrequency * elapsed
+		inf.gradientPhase = inf.gradientFrequency * elapsed
 		for i = 1, inf.N do
 			local old = (oldProgress + (i-1)/inf.N)%1
 			local new = (self.timer + (i-1)/inf.N)%1
@@ -3170,53 +3414,68 @@ end
 
 function lib.GradientPixelGlow_Start(r,options)
 	if not r then	return end
-	for k,v in pairs(pixelDefalut) do
-		options[k] = options[k] or v
-	end
-	local N = options.N
+	local template = options.template and blingTemplates[options.template] or pixelTemplates.default
+	options = AcquireOptions(options, template)
 	
-	addFrameAndTex(r,options.color,"_PixelGlow",options.key,N+4,options.xOffset,options.yOffset,textureList.white,{0,1,0,1},nil,options.frameLevel)
-	local f = r["_PixelGlow"..options.key]
+	local update = addFrameAndTex(r,options.color,"_PixelGlow",options.key or "" ,options.N + 4,options.xOffset,options.yOffset,textureList.white,{0,1,0,1},nil,options.frameLevel)
+	local f = r["_PixelGlow"..(options.key or "")]
 	
 	local width,height = f:GetSize()
-	local length
-	if options.length then
-		length = min(options.length, width, height)
-	else 
-		length = min(math.floor((width+height)/N*1.25), width, height)
-	end
 	
-	f.info.width = nil
-	f.timer = f.timer or 0.0001
-	f.info = f.info or {}
-	f.info.th = options.th
-	f.info.N = N
-	f.info.length = length
-	f.info.frequency = -options.frequency
-	f.info.add = {f.textures[N + 1], f.textures[N + 2], f.textures[N + 3], f.textures[N + 4]}
-	f.info.addVisible = {}
-	f.info.gradient = options.gradient
-	f.info.gradientPhase = f.info.gradientPhase or options.gradientPhase
-	f.info.gradientFrequency = options.gradientFrequency
-	f.info.gradientStep = length/(width+height)	
+	options.length = options.length or min(math.floor((width + height) / N * 1.25))
+	local length = min(options.length, width - 2, height - 2)
 	
+	f.timer = f.timer or 0.001
+	f.inf = {
+		th = options.th,
+		defaultLength = options.length,
+		length = length,
+		N = options.N,
+		frequency = -options.frequency,
+		add = {f.textures[options.N + 1], f.textures[options.N + 2], f.textures[options.N + 3], f.textures[options.N + 4]},
+		addVisible = {},
+		gradient = options.gradient,
+		gradientFrequency = options.gradientFrequency,
+		gradientStep = length/(width + height),
+		forceEnd = options.forceEnd,
+		fadeDuration = options.fadeDuration
+	}
 	PixelUpdateInfo(f)
-	for i = 1, N do
-		local new = (f.timer + (i-1)/N)%1
+	for i = 1, options.N do
+		local new = (f.timer + (i - 1) / options.N)%1
 		local old = (new + 0.5)%1
-		PixelUpdateLine(f, i, f.info.addVisible, old, new)
+		PixelUpdateLine(f, i, f.inf.addVisible, old, new)
 	end
 	
 	for i = 1,4 do
-		f.info.add[i]:SetShown(f.info.addVisible[i])
+		f.inf.add[i]:SetShown(f.inf.addVisible[i])
 	end
 	
-	f:SetScript("OnUpdate",PixelUpdate)
+	PixelUpdate(f, .001)
 	
+	f:SetScript("OnUpdate",PixelUpdate)
+	if options.startBling then
+		if not(update) then
+			f:Hide()
+		end
+		if not(update) or options.repeatBling then
+			options.blingOptions.gradient = options.gradient
+			options.blingOptions.midCallback = function() if f.name and f.name == "_PixelGlow"..(options.key or "") then f:Show() end end
+			lib.Bling(r, options.blingOptions)
+		end
+	end
 end
-
-end	--New Pixel Glow--
-
+	
+function lib.PixelGlow_Stop(r, key, force)
+	if not r or not r["_PixelGlow"..(key or "")] then
+		return
+	end
+	if force then 
+		GlowFramePool:Release(r["_PixelGlow"..(key or "")])
+	else
+		r["_PixelGlow"..(key or "")].inf.finish = true
+	end
+end
 
 --Pixel Glow Functions--
 local pCalc1 = function(progress,s,th,p)
@@ -3396,6 +3655,7 @@ function lib.PixelGlow_Start(r,color,N,frequency,length,th,xOffset,yOffset,borde
     f:SetScript("OnUpdate",pUpdate)
 end
 
+--[[
 function lib.PixelGlow_Stop(r,key)
     if not r then
         return
@@ -3407,7 +3667,7 @@ function lib.PixelGlow_Stop(r,key)
         GlowFramePool:Release(r["_PixelGlow"..key])
     end
 end
-
+]]
 table.insert(lib.glowList, "Pixel Glow")
 lib.startList["Pixel Glow"] = lib.PixelGlow_Start
 lib.stopList["Pixel Glow"] = lib.PixelGlow_Stop
