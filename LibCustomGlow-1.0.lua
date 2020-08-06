@@ -2577,7 +2577,7 @@ local borderPulseTemplates = {
 
 function lib.BorderPulse_Start(r, options)
 	if not r then	return end
-	local template = options.template and blingTemplates[options.template] or borderPulseTemplates.default
+	local template = options.template and borderPulseTemplates[options.template] or borderPulseTemplates.default
 	options = AcquireOptions(options, template)
 	
 
@@ -3415,7 +3415,7 @@ end
 
 function lib.GradientPixelGlow_Start(r,options)
 	if not r then	return end
-	local template = options.template and blingTemplates[options.template] or pixelTemplates.default
+	local template = options.template and pixelTemplates[options.template] or pixelTemplates.default
 	options = AcquireOptions(options, template)
 	
 	local update = addFrameAndTex(r,options.color,"_PixelGlow",options.key or "" ,options.N + 4,options.xOffset,options.yOffset,textureList.white,{0,1,0,1},nil,options.frameLevel)
@@ -3423,7 +3423,7 @@ function lib.GradientPixelGlow_Start(r,options)
 	
 	local width,height = f:GetSize()
 	
-	options.length = options.length or min(math.floor((width + height) / N * 1.25))
+	options.length = options.length or min(math.floor((width + height) / options.N * 1.25))
 	local length = min(options.length, width - 2, height - 2)
 	
 	f.timer = f.timer or 0.001
