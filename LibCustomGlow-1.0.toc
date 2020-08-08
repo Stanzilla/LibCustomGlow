@@ -9,4 +9,6 @@
 
 LibStub\LibStub.lua
 
+locales.xml
+
 LibCustomGlow-1.0.xml
