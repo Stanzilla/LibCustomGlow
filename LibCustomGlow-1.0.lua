@@ -320,6 +320,7 @@ lib.stopList["Pixel Glow"] = lib.PixelGlow_Stop
 local function acUpdate(self,elapsed)
     local width,height = self:GetSize()
     if width ~= self.info.width or height ~= self.info.height then
+        if width*height == 0 then return end -- Avoid division by zero
         self.info.width = width
         self.info.height = height
         self.info.perimeter = 2*(width+height)
