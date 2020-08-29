@@ -6,7 +6,7 @@ https://www.wowace.com/projects/libbuttonglow-1-0
 -- luacheck: globals CreateFromMixins ObjectPoolMixin CreateTexturePool CreateFramePool
 
 local MAJOR_VERSION = "LibCustomGlow-1.0"
-local MINOR_VERSION = 22
+local MINOR_VERSION = 24
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub.") end
 local lib, oldversion = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
@@ -15,20 +15,11 @@ local Masque = LibStub("Masque", true)
 local L = CustomGlow.L
 
 
-
 local textureList = {
     ["empty"] = [[Interface\AdventureMap\BrokenIsles\AM_29]],
     ["white"] = [[Interface\BUTTONS\WHITE8X8]],
     ["shine"] = [[Interface\Artifacts\Artifacts]]
 }
-
-function lib.RegisterTextures(texture,id)
-    textureList[id] = texture
-end
-
-lib.glowList = {}
-lib.startList = {}
-lib.stopList = {}
 
 local GlowParent = UIParent
 
@@ -200,6 +191,12 @@ local function AcquireOptions(options, default, internal)
 	end
 	return options
 end
+
+local GlowList = {}
+lib.GetGlows = function()
+	return DeepCopy(GlowList)	
+end
+
 
 ---- Border Internal Funcitons ----
 
@@ -2009,7 +2006,7 @@ local function BorderSet1LineCorner(f, update)
 	if inf.tail.mirror then
 		tails[1]:SetWidth(f:GetWidth() - inf.th)
 		tails[2]:SetHeight(f:GetHeight() - inf.th)
-		tails[3]:SetHeight(f:GetHeight() - 2*inf.th)
+		tails[3]:SetHeight(f:GetHeight() - 2 * inf.th)
 		tails[4]:SetWidth(f:GetWidth())
 	else
 		if inf.tail.clockwise and (inf.tail.startPoint == "TOPLEFT" or inf.tail.startPoint == "BOTTOMRIGHT") 
@@ -2020,7 +2017,7 @@ local function BorderSet1LineCorner(f, update)
 			inf.tail.size1 = f:GetHeight()
 			inf.tail.size2 = f:GetWidth()
 		end
-		inf.tail.Set1(tails[1], inf.tail.size1 - 2*inf.th)
+		inf.tail.Set1(tails[1], inf.tail.size1 - 2 * inf.th)
 		inf.tail.Set2(tails[2], inf.tail.size2 - inf.th)
 		inf.tail.Set1(tails[3], inf.tail.size1 - inf.th)
 		inf.tail.Set2(tails[4], inf.tail.size2)
@@ -2775,7 +2772,7 @@ local flashF = {
 ---- Bling ----
 local function BlingUpdate(self, elapsed)
 	local inf = self.inf
-	local progress = self.timer + (inf.reverse and -1 or 1) *elapsed / inf.duration
+	local progress = self.timer + (inf.reverse and -1 or 1) * elapsed / inf.duration
 	local old, new
 	
 	if inf.sine then
@@ -2873,27 +2870,24 @@ local blingTemplates = {
 	default = {
 		flash = "split",
 		startPoint = "TOPLEFT",
-		color = {.9, .9, .9, .75},
-		gradient = nil,
-		gradientFrequency = 0.75,
+		color = {0.95, 0.95, 0.95, 0.85},
+		gradient = {{1, .75, .75, 1}, {.75, 1, .75, 1}, {.75, .75, 1, 1}},
+		gradientFrequency = 0.7,
 		noTails = false,
 		sine = true,
 		tails = {
-			th = 1,
-			N = 2,
-			color = nil,
-			startPoint = "TOPRIGHT",
-			clockwise = false,
-			mirror = false
+			th = 2,
+			N = 1,
+			color = {0.95, 0.95, 0.95, 0.85},
+			startPoint = "BOTTOMLEFT",
+			clockwise = true,
+			mirror = true
 		},
 		reverse = false,
-		duration = .65,
-		midCallback = nil,
-		endCallback = nil,
-		key = nil,
-		xOffset = nil,
-		yOffset = nil,
-		frameLevel = nil
+		duration = 0.65,
+		xOffset = 0,
+		yOffset = 0,
+		frameLevel = 8
 	}
 }
 
@@ -2968,11 +2962,13 @@ function lib.Bling(r, options)
 	f:SetScript("OnUpdate", BlingUpdate)
 end
 
-local BlingData = {
+local BlingParamters = {
 	name = L["Bling"],
 	desc = L["Creates Bling over target region"],
+	default = blingTemplates.default,
 	start = lib.Bling,
 	stop = function() end,
+	type = "group",
 	args = {
 		flash = {
 			name = L["Flash"],
@@ -3020,7 +3016,7 @@ local BlingData = {
 		},
 		noTails = {
 			name = L["Disable tail lines"],
-			desc = L["Bling will not use lines, only flash"],
+			desc = L["Bling will not show lines, only flash"],
 			type = "toggle"
 		},
 		sine = {
@@ -3029,6 +3025,8 @@ local BlingData = {
 			type = "toggle",
 		},
 		tails = {
+			name = L["Tail parameters"],
+			desc = L["Parameters of tail lines if enabled"],
 			type = "group", 
 			args = {
 				th = {
@@ -3096,7 +3094,7 @@ local BlingData = {
 		},
 		xOffset = {
 			name = L["X offset"],
-			desc = L["X axis offset"],
+			desc = L["X offset"],
 			type = "range",
 			softMin = -5,
 			softMax = 5,
@@ -3104,15 +3102,15 @@ local BlingData = {
 		},
 		yOffset = {
 			name = L["Y offset"],
-			desc = L["Y axis offset"],
+			desc = L["Y offset"],
 			type = "range",
 			softMin = -5,
 			softMax = 5,
 			step = 1
 		},
 		frameLevel = {
-			name = L["Y offset"],
-			desc = L["Y axis offset"],
+			name = L["Frame level"],
+			desc = L["Glow frame level"],
 			type = "range",
 			softMin = 1,
 			softMax = 20,
@@ -3122,16 +3120,24 @@ local BlingData = {
 		}
 	}
 }
-
+GlowList["Bling"] = BlingParamters
 
 ---- New Glow ----
 local function BorderPulseUpdate(self, elapsed)
 	local progress = self.timer + elapsed * self.inf.frequency * (self.inf.sign or 1)
-	local newProg = self.inf.sine and math.sin(1.5708 * progress) or progress
 	
-	if self.inf.finish and (self.inf.forceEnd or progress > 1) then
+	if self.inf.finish and (self.inf.forceStop or progress > 1) then
 		GlowFramePool:Release(self)
 		return
+	end
+	
+	if self.inf.annoy then
+		local annoyProg = (self.inf.annoyProg or 0) + elapsed * self.inf.annoyFrequency
+		if annoyProg > 1 then
+			lib.Bling(self, self.inf.flashOptions)
+			annoyProg = annoyProg % 1
+		end
+		self.inf.annoyProg = annoyProg
 	end
 	
 	local width,height = self:GetSize()
@@ -3159,6 +3165,7 @@ local function BorderPulseUpdate(self, elapsed)
 		self.inf.BorderSet(self)
 	end
 	
+	local newProg = self.inf.sine and math.sin(1.5708 * progress) or progress
 	self.inf.BorderUpdate(self, newProg)
 	if self.inf.gradient then
 		self.inf.BorderGradient(self, newProg, elapsed)
@@ -3168,31 +3175,32 @@ end
 
 local borderPulseTemplates = {
 	default = {
-		N = 2,
-		th = 1,
-		startPoint = "TOPRIGHT",
-		clockwise = false,
-		mirror = false,
-		frequency = 1.5,
-		sine = true,
-		color = {.8, .8, .5, .9},
-		gradient = nil,
-		gradientFrequency = .7,
+		N = 1,
+		startPoint = "BOTTOMLEFT",
+		th = 2,
+		color = {0.95, 0.95, 0.95, 0.85},
+		gradient = {{1, .75, .75, 1}, {.75, 1, .75, 1}, {.75, .75, 1, 1}},
+		gradientFrequency = 0.7,
+		sine = true,		
+		clockwise = true,
+		mirror = true,
 		startBling = true,
 		repeatBling = true,
-		forceEnd = false,
-		blingOptions = {
-			reverse = true,
-			noTails = true,
-			sine = false,
-			duration = 0.5
-		},
-		key = nil,
-		xOffset = nil,
-		yOffset = nil,
-		frameLevel = nil
+		annoy = false,
+		annoyFrequency = 0.5,
+		blingOptions = blingTemplates.default,		
+		forceStop = false,
+		frequency = 2,
+		xOffset = 0,
+		yOffset = 0,
+		frameLevel = 8
 	}
 }
+
+borderPulseTemplates.default.blingOptions.reverse = true
+borderPulseTemplates.default.blingOptions.noTails = true
+borderPulseTemplates.default.blingOptions.sine = false
+borderPulseTemplates.default.blingOptions.duration = 0.5
 
 function lib.BorderPulse_Start(r, options)
 	if not r then	return end
@@ -3216,9 +3224,11 @@ function lib.BorderPulse_Start(r, options)
 		th = options.th,
 		frequency = options.frequency,
 		sine = options.sine,
-		forceEnd = options.forceEnd,
+		forceStop = options.forceStop,
 		gradient = options.gradient,
 		gradientFrequency = options.gradientFrequency,
+		annoy = options.annoy,
+		annoyFrequency = options.annoyFrequency,
 		BorderSet = BorderSet,
 		BorderUpdate = BorderUpdate,
 		BorderGradient = BorderGradient,
@@ -3249,6 +3259,15 @@ function lib.BorderPulse_Start(r, options)
 		end
 	end
 	
+	if options.repeatBling or options.annoy then
+		local flashOptions = AcquireOptions(options.blingOptions, blingTemplates.default)
+		if not flashOptions.noTails	then
+			flashOptions.noTails = true
+			flashOptions.duration = flashOptions.duration * .66
+		end
+		f.inf.flashOptions = flashOptions
+	end
+	
 	f.inf.BorderSet(f)
 	BorderPulseUpdate(f, .001)
 	
@@ -3256,10 +3275,12 @@ function lib.BorderPulse_Start(r, options)
 		if not(update) then
 			f:Hide()
 		end
-		if not(update) or options.repeatBling then
+		if not(update) then
 			options.blingOptions.midCallback = function() if f.name and f.name == "_BorderPulse"..(options.key or "") then f:Show() end end
 			options.blingOptions.endCallback = function() if f.name and f.name == "_BorderPulse"..(options.key or "") then f:SetScript("OnUpdate", BorderPulseUpdate) end end
 			lib.Bling(r, options.blingOptions)
+		elseif options.repeatBling then
+			lib.Bling(r, f.inf.flashOptions)
 		end
 	end
 end
@@ -3275,34 +3296,167 @@ function lib.BorderPulse_Stop(r, key, force)
 	end
 end
 
+local BorderPulseParamters = {
+	name = L["Border Pulse"],
+	desc = L["Creates Border Pulse glow over target region"],
+	pixelTemplates = borderPulseTemplates.default,
+	start = lib.BorderPulse_Start,
+	stop = lib.BorderPulse_Stop,
+	type = "group",
+	args = {
+		N = {
+			name = L["Tail N"],
+			desc = L["Number of tail lines"],
+			type = "select",
+			values = {
+				["1"] = 1,
+				["2"] = 2,
+				["4"] = 4
+			}
+		},
+		startPoint = {
+			name = L["Start point"],
+			desc = L["Starting point of flash"],
+			type = "select",
+			values = {
+				[L["TOPLEFT"]] = "TOPLEFT",
+				[L["TOP"]] = "TOP",
+				[L["TOPRIGHT"]] = "TOPRIGHT",
+				[L["RIGHT"]] = "RIGHT",
+				[L["BOTTOMRIGHT"]] = "BOTTOMRIGHT",
+				[L["BOTTOM"]] = "BOTTOM",
+				[L["BOTTOMLEFT"]] = "BOTTOMLEFT",
+				[L["LEFT"]] = "LEFT"
+			}			
+		},		
+		th = {
+			name = L["Tail thickness"],
+			desc = L["Thickness of tails"],
+			type = "range",
+			min = 1,
+			softMax = 5,
+			step = 1
+		},
+		color = {
+			name = L["Color"],
+			desc = L["Color of flash"],
+			type = "color"
+		},
+		gradient = {
+			name = L["Gradient"],
+			desc = L["Grradient of tail lines"],
+			type = "gradient"
+		},
+		gradientFrequency = {
+			name = L["Gradient frequency"],
+			desc = L["Frequency of gradient rotation"],
+			type = "range",
+			softMin = -2,
+			softMax = 2,
+			step = 0.05
+		},
+		sine = {
+			name = L["Sine"],
+			desc = L["Use sinusoidal progress instead of linear"],
+			type = "toggle",
+		},		
+		clockwise = {
+			name = L["Clockwise"],
+			desc = L["Direction of pulses"],
+			type = "toggle"
+		},
+		mirror = {
+			name = L["Mirror"],
+			desc = L["Mirror tail line progress"],
+			type = "toggle"
+		},
+		startBling = {
+			name = L["Start Bling"],
+			desc = L["Show Bling on first application of glow"],
+			type = "toggle",
+		},
+		repeatBling = {
+			name = L["Repeat Bling"],
+			desc = L["Show Bling on reapplication of glow"],
+			type = "toggle",
+		},
+		annoy = {
+			name = L["Annoy"],
+			desc = L["Repeat Bling periodically while glow is active"],
+			type = "toggle",
+		},
+		annoyFrequency = {
+			name = L["Annoy frequency"],
+			desc = L["Frequency of annoy Bling if eenabled"],
+			type = "range",
+			min = 0.05,
+			softMin = 0.25,
+			softMax = 2,
+			step = 0.05
+		},
+		blingOptions = BlingParamters,		
+		forceStop = {
+			name = L["Force stop"],
+			desc = L["Stops glow immediately without waiting for period end"],
+			type = "toggle",
+		},
+		frequency = {
+			name = L["Glow frequency"],
+			desc = L["Frequency of glow pulses"],
+			type = "range",
+			softMin = -2,
+			softMax = 2,
+			step = 0.05
+		},
+		xOffset = {
+			name = L["X offset"],
+			desc = L["X offset"],
+			type = "range",
+			softMin = -5,
+			softMax = 5,
+			step = 1
+		},
+		yOffset = {
+			name = L["Y offset"],
+			desc = L["Y offset"],
+			type = "range",
+			softMin = -5,
+			softMax = 5,
+			step = 1
+		},
+		frameLevel = {
+			name = L["Frame level"],
+			desc = L["Glow frame level"],
+			type = "range",
+			softMin = 1,
+			softMax = 20,
+			min = 0,
+			max = 10000,
+			step = 1
+		}
+	}
+}
 
+GlowList["Border Pulse Glow"] = BorderPulseParamters
 ---- Pixel Glow ----
 local pixelTemplates = {
 	default = {
-		N = 8,
-		th = 1,
-		color = {0.95,0.95,0.32,1},
-		gradient = nil,
-		gradientFrequency = 0.7,
-		frequency = 0.25,
-		bling = true,
-		forceEnd = false,
-		fadeDuration = 0.45,
+		N = 2,
+		th = 2,
+		color = {0.95, 0.95, 0.95, 0.85},
+		gradient = {{1, .75, .75, 1}, {.75, 1, .75, 1}, {.75, .75, 1, 1}},
+		gradientFrequency = .75,
 		startBling = true,
 		repeatBling = true,
-		blingOptions = {
-			reverse = true,
-			startPoint  = "TOPLEFT",
-			tails = {
-				N = 2,
-				clockwise = true,
-				startPoint = "TOPRIGHT"
-			}
-		},
-		key = nil,
-		xOffset = nil,
-		yOffset = nil,
-		frameLevel = nil
+		annoy = false,
+		annoyFrequency = 0.5,
+		blingOptions = BlingParamters,		
+		forceStop = false,
+		fadeDuration = 0.45,
+		frequency = -0.55,
+		xOffset = 0,
+		yOffset = 0,
+		frameLevel = 8
 	}
 }
 
@@ -3518,13 +3672,22 @@ local function PixelUpdate(self, elapsed)
 	
 	if inf.finish then
 		inf.fading = inf.fading or 0
-		if inf.forceEnd or inf.fading > inf.fadeDuration then
+		if inf.forceStop or inf.fading > inf.fadeDuration then
 			GlowFramePool:Release(self)
 			return
 		else
 			inf.fading = inf.fading or 0
 			self:SetAlpha(1 - inf.fading / inf.fadeDuration)
 			inf.fading = inf.fading + elapsed
+		end
+	else		
+		if inf.annoy then
+			local annoyProg = (inf.annoyProg or 0) + elapsed * inf.annoyFrequency
+			if annoyProg > 1 then
+				lib.Bling(self, inf.flashOptions)
+				annoyProg = annoyProg % 1
+			end
+			inf.annoyProg = annoyProg
 		end
 	end
 	
@@ -3590,12 +3753,14 @@ function lib.PixelGlow_Start(r,options)
 		length = length,
 		N = options.N,
 		frequency = -options.frequency,
+		annoy = options.annoy,
+		annoyFrequency = options.annoyFrequency,
 		add = {f.textures[options.N + 1], f.textures[options.N + 2], f.textures[options.N + 3], f.textures[options.N + 4]},
 		addVisible = {},
 		gradient = options.gradient,
 		gradientFrequency = options.gradientFrequency,
 		gradientStep = length/(width + height),
-		forceEnd = options.forceEnd,
+		forceStop = options.forceStop,
 		fadeDuration = options.fadeDuration
 	}
 	PixelUpdateInfo(f)
@@ -3609,6 +3774,16 @@ function lib.PixelGlow_Start(r,options)
 		f.inf.add[i]:SetShown(f.inf.addVisible[i])
 	end
 	
+	
+	if options.repeatBling or options.annoy then
+		local flashOptions = AcquireOptions(options.blingOptions, blingTemplates.default)
+		if not flashOptions.noTails	then
+			flashOptions.noTails = true
+			flashOptions.duration = flashOptions.duration * .66
+		end
+		f.inf.flashOptions = flashOptions
+	end
+	
 	PixelUpdate(f, .001)
 	
 	f:SetScript("OnUpdate",PixelUpdate)
@@ -3616,10 +3791,12 @@ function lib.PixelGlow_Start(r,options)
 		if not(update) then
 			f:Hide()
 		end
-		if not(update) or options.repeatBling then
+		if not(update) then
 			options.blingOptions.gradient = options.gradient
 			options.blingOptions.midCallback = function() if f.name and f.name == "_PixelGlow"..(options.key or "") then f:Show() end end
 			lib.Bling(r, options.blingOptions)
+		elseif options.repeatBling then
+			lib.Bling(r, f.inf.flashOptions)
 		end
 	end
 end
@@ -3634,6 +3811,126 @@ function lib.PixelGlow_Stop(r, key, force)
 		r["_PixelGlow"..(key or "")].inf.finish = true
 	end
 end
+
+local PixelGlowParamters = {
+	name = L["Pixel Glow"],
+	desc = L["Creates Pixel glow over target region"],
+	default = pixelTemplates.default,
+	start = lib.PixelGlow_Start,
+	stop = lib.PixelGlow_Stop,
+	type = "group",
+	args = {	
+		N = {
+			name = L["Number of lines"],
+			desc = L["Number of lines"],
+			type = "range",
+			min = 1,
+			softMax = 14,
+			step = 1
+		},
+		th = {
+			name = L["Line thickness"],
+			desc = L["Thickness of lines"],
+			type = "range",
+			min = 1,
+			softMax = 5,
+			step = 1
+		},
+		color = {
+			name = L["Color"],
+			desc = L["Color of lines"],
+			type = "color"
+		},
+		gradient = {
+			name = L["Gradient"],
+			desc = L["Gradient of lines"],
+			type = "gradient"
+		},
+		gradientFrequency = {
+			name = L["Gradient frequency"],
+			desc = L["Frequency of gradient rotation"],
+			type = "range",
+			softMin = -2,
+			softMax = 2,
+			step = 0.05
+		},
+		startBling = {
+			name = L["Start Bling"],
+			desc = L["Show Bling on first application of glow"],
+			type = "toggle",
+		},
+		repeatBling = {
+			name = L["Repeat Bling"],
+			desc = L["Show Bling on reapplication of glow"],
+			type = "toggle",
+		},
+		annoy = {
+			name = L["Annoy"],
+			desc = L["Repeat Bling periodically while glow is active"],
+			type = "toggle",
+		},
+		annoyFrequency = {
+			name = L["Annoy frequency"],
+			desc = L["Frequency of annoy Bling if eenabled"],
+			type = "range",
+			min = 0.05,
+			softMin = 0.25,
+			softMax = 2,
+			step = 0.05
+		},
+		blingOptions = BlingParamters,		
+		forceStop = {
+			name = L["Force stop"],
+			desc = L["Stops glow immediately without waiting for fade"],
+			type = "toggle",
+		},
+		fadeDuration = {
+			name = L["Fade duration"],
+			desc = L["Duration of fade animation if not forced stop"],
+			type = "range",
+			min = 0,
+			softMin = 0.05,
+			softMax = 1,
+			step = 0.05
+		},
+		frequency = {
+			name = L["Glow frequency"],
+			desc = L["Frequency of glow pulses"],
+			type = "range",
+			softMin = -2,
+			softMax = 2,
+			step = 0.05
+		},
+		xOffset = {
+			name = L["X offset"],
+			desc = L["X offset"],
+			type = "range",
+			softMin = -5,
+			softMax = 5,
+			step = 1
+		},
+		yOffset = {
+			name = L["Y offset"],
+			desc = L["Y offset"],
+			type = "range",
+			softMin = -5,
+			softMax = 5,
+			step = 1
+		},
+		frameLevel = {
+			name = L["Frame level"],
+			desc = L["Glow frame level"],
+			type = "range",
+			softMin = 1,
+			softMax = 20,
+			min = 0,
+			max = 10000,
+			step = 1
+		}
+	}
+}
+
+GlowList["Pixel Glow"] = PixelGlowParamters
 
 
 ---- Autocast Glow ----
@@ -3670,13 +3967,12 @@ local function acUpdate(self,elapsed)
     end
 end
 
-local ACShineTemplates = {
+local autoCastTemplates = {
 	default = {
 		color = {0.95,0.95,0.32,1},
 		N = 4,
 		frequency = 0.125,
 		scale = 1,
-		key = "",
 		xOffset = 0,
 		yOffset = 0,
 		frameLevel = 8
@@ -3686,7 +3982,7 @@ local ACShineTemplates = {
 function lib.AutoCastGlow_Start(r,options)
 	if not r then return end
 	
-	local template = options and options.template and ACShineTemplates[options.template] or ACShineTemplates.default
+	local template = options and options.template and autoCastTemplates[options.template] or autoCastTemplates.default
 	options = AcquireOptions(options, template)
 	
 	addFrameAndTex(r,options.color,"_AutoCastGlow",options.key,options.N * 4,options.xOffset,options.yOffset,textureList.shine,{0.8115234375,0.9169921875,0.8798828125,0.9853515625},true, options.frameLevel)
@@ -3716,6 +4012,77 @@ function lib.AutoCastGlow_Stop(r,key)
 		GlowFramePool:Release(r["_AutoCastGlow"..key])
 	end
 end
+
+local AutoCastParamters = {
+	name = L["AutoCast Glow"],
+	desc = L["Creates AutoCast glow over target region"],
+	default = autoCastTemplates.default,
+	start = lib.AutoCastGlow_Start,
+	stop = lib.AutoCastGlow_Stop,
+	type = "group",
+	args = {	
+		N = {
+			name = L["Number of sparks"],
+			desc = L["Number of sparks"],
+			type = "range",
+			min = 1,
+			softMax = 15,
+			step = 1
+		},
+		scale = {
+			name = L["Spark scale"],
+			desc = L["Spark scale"],
+			type = "range",
+			min = 0,
+			softMin = 0.25,
+			softMax = 4,
+			step = 0.05
+		},
+		color = {
+			name = L["Color"],
+			desc = L["Color of sparks"],
+			type = "color"
+		},
+		frequency = {
+			name = L["Glow frequency"],
+			desc = L["Frequency of glow"],
+			type = "range",
+			min = 0.05,
+			softMin = 0.05,
+			softMax = 2,
+			step = 0.05
+		},
+		xOffset = {
+			name = L["X offset"],
+			desc = L["X offset"],
+			type = "range",
+			softMin = -5,
+			softMax = 5,
+			step = 1
+		},
+		yOffset = {
+			name = L["Y offset"],
+			desc = L["Y offset"],
+			type = "range",
+			softMin = -5,
+			softMax = 5,
+			step = 1
+		},
+		frameLevel = {
+			name = L["Frame level"],
+			desc = L["Glow frame level"],
+			type = "range",
+			softMin = 1,
+			softMax = 20,
+			min = 0,
+			max = 10000,
+			step = 1
+		}
+	}
+}
+
+GlowList["AutoCast Glow"] = AutoCastParamters
+
 
 ---- Action Button Glow ----
 local function ButtonGlowResetter(framePool,frame)
@@ -3909,6 +4276,8 @@ local buttonGlowTemplates = {
 	default = {
 		color = nil,
 		frequency = 0.25, 
+		xOffset = 0,
+		yOffset = 0,
 		frameLevel = 8
 	}
 }
@@ -4011,3 +4380,56 @@ function lib.ButtonGlow_Stop(r)
         end
     end
 end
+
+local ButtonGlowParamters = {
+	name = L["Blizzard Glow"],
+	desc = L["Creates Blizzard glow over target region"],
+	default = buttonGlowTemplates.default,
+	start = lib.AutoCastGlow_Start,
+	stop = lib.AutoCastGlow_Stop,
+	type = "group",
+	args = {
+		color = {
+			name = L["Color"],
+			desc = L["Color of Blizzard glow"],
+			type = "color"
+		},
+		frequency = {
+			name = L["Glow frequency"],
+			desc = L["Frequency of glow"],
+			type = "range",
+			min = 0.05,
+			softMin = 0.05,
+			softMax = 2,
+			step = 0.05
+		},
+		xOffset = {
+			name = L["X offset"],
+			desc = L["X offset"],
+			type = "range",
+			softMin = -5,
+			softMax = 5,
+			step = 1
+		},
+		yOffset = {
+			name = L["Y offset"],
+			desc = L["Y offset"],
+			type = "range",
+			softMin = -5,
+			softMax = 5,
+			step = 1
+		},
+		frameLevel = {
+			name = L["Frame level"],
+			desc = L["Glow frame level"],
+			type = "range",
+			softMin = 1,
+			softMax = 20,
+			min = 0,
+			max = 10000,
+			step = 1
+		}
+	}
+}
+
+GlowList["Button Glow"] = ButtonGlowParamters
