@@ -2986,14 +2986,14 @@ local BlingParamters = {
 			desc = L["Starting point of flash"],
 			type = "select",
 			values = {
-				[L["TOPLEFT"]] = "TOPLEFT",
-				[L["TOP"]] = "TOP",
-				[L["TOPRIGHT"]] = "TOPRIGHT",
-				[L["RIGHT"]] = "RIGHT",
-				[L["BOTTOMRIGHT"]] = "BOTTOMRIGHT",
-				[L["BOTTOM"]] = "BOTTOM",
-				[L["BOTTOMLEFT"]] = "BOTTOMLEFT",
-				[L["LEFT"]] = "LEFT"
+				["TOPLEFT"] = L["TOPLEFT"],
+				["TOP"] = L["TOP"],
+				["TOPRIGHT"] = L["TOPRIGHT"],
+				["RIGHT"] = L["RIGHT"],
+				["BOTTOMRIGHT"] = L["BOTTOMRIGHT"],
+				["BOTTOM"] = L["BOTTOM"],
+				["BOTTOMLEFT"] = L["BOTTOMLEFT"],
+				["LEFT"] = L["LEFT"]
 			}			
 		},
 		color = {
@@ -3057,14 +3057,14 @@ local BlingParamters = {
 					desc = L["Starting point of tail lines"],
 					type = "select",
 					values = {
-						[L["TOPLEFT"]] = "TOPLEFT",
-						[L["TOP"]] = "TOP",
-						[L["TOPRIGHT"]] = "TOPRIGHT",
-						[L["RIGHT"]] = "RIGHT",
-						[L["BOTTOMRIGHT"]] = "BOTTOMRIGHT",
-						[L["BOTTOM"]] = "BOTTOM",
-						[L["BOTTOMLEFT"]] = "BOTTOMLEFT",
-						[L["LEFT"]] = "LEFT"
+						["TOPLEFT"] = L["TOPLEFT"],
+						["TOP"] = L["TOP"],
+						["TOPRIGHT"] = L["TOPRIGHT"],
+						["RIGHT"] = L["RIGHT"],
+						["BOTTOMRIGHT"] = L["BOTTOMRIGHT"],
+						["BOTTOM"] = L["BOTTOM"],
+						["BOTTOMLEFT"] = L["BOTTOMLEFT"],
+						["LEFT"] = L["LEFT"]
 					}			
 				},
 				clockwise = {
@@ -3319,15 +3319,15 @@ local BorderPulseParamters = {
 			desc = L["Starting point of flash"],
 			type = "select",
 			values = {
-				[L["TOPLEFT"]] = "TOPLEFT",
-				[L["TOP"]] = "TOP",
-				[L["TOPRIGHT"]] = "TOPRIGHT",
-				[L["RIGHT"]] = "RIGHT",
-				[L["BOTTOMRIGHT"]] = "BOTTOMRIGHT",
-				[L["BOTTOM"]] = "BOTTOM",
-				[L["BOTTOMLEFT"]] = "BOTTOMLEFT",
-				[L["LEFT"]] = "LEFT"
-			}			
+				["TOPLEFT"] = L["TOPLEFT"],
+				["TOP"] = L["TOP"],
+				["TOPRIGHT"] = L["TOPRIGHT"],
+				["RIGHT"] = L["RIGHT"],
+				["BOTTOMRIGHT"] = L["BOTTOMRIGHT"],
+				["BOTTOM"] = L["BOTTOM"],
+				["BOTTOMLEFT"] = L["BOTTOMLEFT"],
+				["LEFT"] = L["LEFT"]
+			}					
 		},		
 		th = {
 			name = L["Tail thickness"],
