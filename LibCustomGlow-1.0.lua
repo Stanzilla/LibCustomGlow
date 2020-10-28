@@ -3003,7 +3003,7 @@ local BlingParamters = {
 		},
 		gradient = {
 			name = L["Gradient"],
-			desc = L["Grradient of tail lines"],
+			desc = L["Gradient of tail lines"],
 			type = "gradient"
 		},
 		gradientFrequency = {
