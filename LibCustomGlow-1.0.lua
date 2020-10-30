@@ -2968,7 +2968,8 @@ local BlingParamters = {
 	default = blingTemplates.default,
 	start = lib.Bling,
 	stop = function() end,
-	type = "group",
+    type = "group",
+    order = 1,
 	args = {
 		flash = {
 			name = L["Flash"],
@@ -2978,8 +2979,9 @@ local BlingParamters = {
 				["split"] = "split",
 				["shutter"] = "shutter",
 				["square"] = "square",
-				["slide"] = "slide"
-			}
+                ["slide"] = "slide"
+            },
+            order = 1
 		},
 		startPoint = {
 			name = L["Start point"],
@@ -2994,17 +2996,20 @@ local BlingParamters = {
 				["BOTTOM"] = L["BOTTOM"],
 				["BOTTOMLEFT"] = L["BOTTOMLEFT"],
 				["LEFT"] = L["LEFT"]
-			}
+            },
+            order = 2
 		},
 		color = {
 			name = L["Color"],
 			desc = L["Color of flash"],
-			type = "color"
+            type = "color",
+            order = 3
 		},
 		gradient = {
 			name = L["Gradient"],
 			desc = L["Gradient of tail lines"],
-			type = "gradient"
+            type = "gradient",
+            order = 4
 		},
 		gradientFrequency = {
 			name = L["Gradient frequency"],
@@ -3012,22 +3017,26 @@ local BlingParamters = {
 			type = "range",
 			softMin = -2,
 			softMax = 2,
-			step = 0.05
+            step = 0.05,
+            order = 5
 		},
 		noTails = {
 			name = L["Disable tail lines"],
 			desc = L["Bling will not show lines, only flash"],
-			type = "toggle"
+            type = "toggle",
+            order = 6
 		},
 		sine = {
 			name = L["Sine"],
 			desc = L["Use sinusoidal progress instead of linear"],
-			type = "toggle",
+            type = "toggle",
+            order = 7
 		},
 		tails = {
 			name = L["Tail parameters"],
 			desc = L["Parameters of tail lines if enabled"],
-			type = "group",
+            type = "group",
+            order = 8,
 			args = {
 				th = {
 					name = L["Tail thickness"],
@@ -3035,7 +3044,8 @@ local BlingParamters = {
 					type = "range",
 					min = 1,
 					softMax = 5,
-					step = 1
+                    step = 1,
+                    order = 1
 				},
 				N = {
 					name = L["Tail N"],
@@ -3045,12 +3055,14 @@ local BlingParamters = {
 						["1"] = 1,
 						["2"] = 2,
 						["4"] = 4
-					}
+                    },
+                    order = 2
 				},
 				color = {
 					name = L["Tail color"],
 					desc = L["Color of tail lines"],
-					type = "color"
+                    type = "color",
+                    order = 3
 				},
 				startPoint = {
 					name = L["Tail start point"],
@@ -3065,24 +3077,28 @@ local BlingParamters = {
 						["BOTTOM"] = L["BOTTOM"],
 						["BOTTOMLEFT"] = L["BOTTOMLEFT"],
 						["LEFT"] = L["LEFT"]
-					}
+                    },
+                    order = 4
 				},
 				clockwise = {
 					name = L["Clockwise"],
 					desc = L["Direction of tail progress if not mirrored"],
-					type = "toggle"
+                    type = "toggle",
+                    order = 5
 				},
 				mirror = {
 					name = L["Mirror"],
 					desc = L["Mirror tail line progress"],
-					type = "toggle"
+                    type = "toggle",
+                    order = 6
 				}
 			}
 		},
 		reverse = {
 			name = L["Reverse"],
 			desc = L["Reverses Bling progress"],
-			type = "toggle"
+            type = "toggle",
+            order = 9
 		},
 		duration = {
 			name = L["Duration"],
@@ -3090,7 +3106,8 @@ local BlingParamters = {
 			type = "range",
 			min = 0.05,
 			softMax = 1,
-			step = 0.05
+            step = 0.05,
+            order = 10
 		},
 		xOffset = {
 			name = L["X offset"],
@@ -3098,7 +3115,8 @@ local BlingParamters = {
 			type = "range",
 			softMin = -5,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 11
 		},
 		yOffset = {
 			name = L["Y offset"],
@@ -3106,7 +3124,8 @@ local BlingParamters = {
 			type = "range",
 			softMin = -5,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 12
 		},
 		frameLevel = {
 			name = L["Frame level"],
@@ -3116,7 +3135,8 @@ local BlingParamters = {
 			softMax = 20,
 			min = 0,
 			max = 10000,
-			step = 1
+            step = 1,
+            order = 13
 		}
 	}
 }
@@ -3299,10 +3319,11 @@ end
 local BorderPulseParamters = {
 	name = L["Border Pulse"],
 	desc = L["Creates Border Pulse glow over target region"],
-	pixelTemplates = borderPulseTemplates.default,
+	default = borderPulseTemplates.default,
 	start = lib.BorderPulse_Start,
 	stop = lib.BorderPulse_Stop,
-	type = "group",
+    type = "group",
+    order = 1,
 	args = {
 		N = {
 			name = L["Tail N"],
@@ -3312,7 +3333,8 @@ local BorderPulseParamters = {
 				["1"] = 1,
 				["2"] = 2,
 				["4"] = 4
-			}
+            },
+            order = 1
 		},
 		startPoint = {
 			name = L["Start point"],
@@ -3327,7 +3349,8 @@ local BorderPulseParamters = {
 				["BOTTOM"] = L["BOTTOM"],
 				["BOTTOMLEFT"] = L["BOTTOMLEFT"],
 				["LEFT"] = L["LEFT"]
-			}
+            },
+            order = 2
 		},
 		th = {
 			name = L["Tail thickness"],
@@ -3335,17 +3358,20 @@ local BorderPulseParamters = {
 			type = "range",
 			min = 1,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 3
 		},
 		color = {
 			name = L["Color"],
 			desc = L["Color of flash"],
-			type = "color"
+            type = "color",
+            order = 4
 		},
 		gradient = {
 			name = L["Gradient"],
 			desc = L["Gradient of tail lines"],
-			type = "gradient"
+            type = "gradient",
+            order = 5
 		},
 		gradientFrequency = {
 			name = L["Gradient frequency"],
@@ -3353,37 +3379,44 @@ local BorderPulseParamters = {
 			type = "range",
 			softMin = -2,
 			softMax = 2,
-			step = 0.05
+            step = 0.05,
+            order = 6
 		},
 		sine = {
 			name = L["Sine"],
 			desc = L["Use sinusoidal progress instead of linear"],
-			type = "toggle",
+            type = "toggle",
+            order = 7
 		},
 		clockwise = {
 			name = L["Clockwise"],
 			desc = L["Direction of pulses"],
-			type = "toggle"
+            type = "toggle",
+            order = 8
 		},
 		mirror = {
 			name = L["Mirror"],
 			desc = L["Mirror tail line progress"],
-			type = "toggle"
+            type = "toggle",
+            order = 9
 		},
 		startBling = {
 			name = L["Start Bling"],
 			desc = L["Show Bling on first application of glow"],
-			type = "toggle",
+            type = "toggle",
+            order = 10
 		},
 		repeatBling = {
 			name = L["Repeat Bling"],
 			desc = L["Show Bling on reapplication of glow"],
-			type = "toggle",
+            type = "toggle",
+            order = 11
 		},
 		annoy = {
 			name = L["Annoy"],
 			desc = L["Repeat Bling periodically while glow is active"],
-			type = "toggle",
+            type = "toggle",
+            order = 12
 		},
 		annoyFrequency = {
 			name = L["Annoy frequency"],
@@ -3392,13 +3425,15 @@ local BorderPulseParamters = {
 			min = 0.05,
 			softMin = 0.25,
 			softMax = 2,
-			step = 0.05
+            step = 0.05,
+            order = 13
 		},
 		blingOptions = BlingParamters,
 		forceStop = {
 			name = L["Force stop"],
 			desc = L["Stops glow immediately without waiting for period end"],
-			type = "toggle",
+            type = "toggle",
+            order = 14
 		},
 		frequency = {
 			name = L["Glow frequency"],
@@ -3406,7 +3441,8 @@ local BorderPulseParamters = {
 			type = "range",
 			softMin = -2,
 			softMax = 2,
-			step = 0.05
+            step = 0.05,
+            order = 15
 		},
 		xOffset = {
 			name = L["X offset"],
@@ -3414,7 +3450,8 @@ local BorderPulseParamters = {
 			type = "range",
 			softMin = -5,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 16
 		},
 		yOffset = {
 			name = L["Y offset"],
@@ -3422,7 +3459,8 @@ local BorderPulseParamters = {
 			type = "range",
 			softMin = -5,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 17
 		},
 		frameLevel = {
 			name = L["Frame level"],
@@ -3432,7 +3470,8 @@ local BorderPulseParamters = {
 			softMax = 20,
 			min = 0,
 			max = 10000,
-			step = 1
+            step = 1,
+            order = 18
 		}
 	}
 }
@@ -3818,7 +3857,8 @@ local PixelGlowParamters = {
 	default = pixelTemplates.default,
 	start = lib.PixelGlow_Start,
 	stop = lib.PixelGlow_Stop,
-	type = "group",
+    type = "group",
+    order = 1,
 	args = {
 		N = {
 			name = L["Number of lines"],
@@ -3826,7 +3866,8 @@ local PixelGlowParamters = {
 			type = "range",
 			min = 1,
 			softMax = 14,
-			step = 1
+            step = 1,
+            order = 1
 		},
 		th = {
 			name = L["Line thickness"],
@@ -3834,17 +3875,20 @@ local PixelGlowParamters = {
 			type = "range",
 			min = 1,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 2
 		},
 		color = {
 			name = L["Color"],
 			desc = L["Color of lines"],
-			type = "color"
+            type = "color",
+            order = 3
 		},
 		gradient = {
 			name = L["Gradient"],
 			desc = L["Gradient of lines"],
-			type = "gradient"
+            type = "gradient",
+            order = 4
 		},
 		gradientFrequency = {
 			name = L["Gradient frequency"],
@@ -3852,22 +3896,26 @@ local PixelGlowParamters = {
 			type = "range",
 			softMin = -2,
 			softMax = 2,
-			step = 0.05
+            step = 0.05,
+            order = 5
 		},
 		startBling = {
 			name = L["Start Bling"],
 			desc = L["Show Bling on first application of glow"],
-			type = "toggle",
+            type = "toggle",
+            order = 6
 		},
 		repeatBling = {
 			name = L["Repeat Bling"],
 			desc = L["Show Bling on reapplication of glow"],
-			type = "toggle",
+            type = "toggle",
+            order = 7
 		},
 		annoy = {
 			name = L["Annoy"],
 			desc = L["Repeat Bling periodically while glow is active"],
-			type = "toggle",
+            type = "toggle",
+            order = 8
 		},
 		annoyFrequency = {
 			name = L["Annoy frequency"],
@@ -3876,13 +3924,15 @@ local PixelGlowParamters = {
 			min = 0.05,
 			softMin = 0.25,
 			softMax = 2,
-			step = 0.05
+            step = 0.05,
+            order = 9
 		},
 		blingOptions = BlingParamters,
 		forceStop = {
 			name = L["Force stop"],
 			desc = L["Stops glow immediately without waiting for fade"],
-			type = "toggle",
+            type = "toggle",
+            order = 10
 		},
 		fadeDuration = {
 			name = L["Fade duration"],
@@ -3891,7 +3941,8 @@ local PixelGlowParamters = {
 			min = 0,
 			softMin = 0.05,
 			softMax = 1,
-			step = 0.05
+            step = 0.05,
+            order = 11
 		},
 		frequency = {
 			name = L["Glow frequency"],
@@ -3899,7 +3950,8 @@ local PixelGlowParamters = {
 			type = "range",
 			softMin = -2,
 			softMax = 2,
-			step = 0.05
+            step = 0.05,
+            order = 12
 		},
 		xOffset = {
 			name = L["X offset"],
@@ -3907,7 +3959,8 @@ local PixelGlowParamters = {
 			type = "range",
 			softMin = -5,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 13
 		},
 		yOffset = {
 			name = L["Y offset"],
@@ -3915,7 +3968,8 @@ local PixelGlowParamters = {
 			type = "range",
 			softMin = -5,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 14
 		},
 		frameLevel = {
 			name = L["Frame level"],
@@ -3925,7 +3979,8 @@ local PixelGlowParamters = {
 			softMax = 20,
 			min = 0,
 			max = 10000,
-			step = 1
+            step = 1,
+            order = 15
 		}
 	}
 }
@@ -4019,7 +4074,8 @@ local AutoCastParamters = {
 	default = autoCastTemplates.default,
 	start = lib.AutoCastGlow_Start,
 	stop = lib.AutoCastGlow_Stop,
-	type = "group",
+    type = "group",
+    order = 1,
 	args = {
 		N = {
 			name = L["Number of sparks"],
@@ -4027,7 +4083,8 @@ local AutoCastParamters = {
 			type = "range",
 			min = 1,
 			softMax = 15,
-			step = 1
+            step = 1,
+            order = 1
 		},
 		scale = {
 			name = L["Spark scale"],
@@ -4036,12 +4093,14 @@ local AutoCastParamters = {
 			min = 0,
 			softMin = 0.25,
 			softMax = 4,
-			step = 0.05
+            step = 0.05,
+            order = 2
 		},
 		color = {
 			name = L["Color"],
 			desc = L["Color of sparks"],
-			type = "color"
+            type = "color",
+            order = 3
 		},
 		frequency = {
 			name = L["Glow frequency"],
@@ -4050,7 +4109,8 @@ local AutoCastParamters = {
 			min = 0.05,
 			softMin = 0.05,
 			softMax = 2,
-			step = 0.05
+            step = 0.05,
+            order = 4
 		},
 		xOffset = {
 			name = L["X offset"],
@@ -4058,7 +4118,8 @@ local AutoCastParamters = {
 			type = "range",
 			softMin = -5,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 5
 		},
 		yOffset = {
 			name = L["Y offset"],
@@ -4066,7 +4127,8 @@ local AutoCastParamters = {
 			type = "range",
 			softMin = -5,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 6
 		},
 		frameLevel = {
 			name = L["Frame level"],
@@ -4076,7 +4138,8 @@ local AutoCastParamters = {
 			softMax = 20,
 			min = 0,
 			max = 10000,
-			step = 1
+            step = 1,
+            order = 7
 		}
 	}
 }
@@ -4387,12 +4450,14 @@ local ButtonGlowParamters = {
 	default = buttonGlowTemplates.default,
 	start = lib.AutoCastGlow_Start,
 	stop = lib.AutoCastGlow_Stop,
-	type = "group",
+    type = "group",
+    order = 1,
 	args = {
 		color = {
 			name = L["Color"],
 			desc = L["Color of Blizzard glow"],
-			type = "color"
+            type = "color",
+            order = 1
 		},
 		frequency = {
 			name = L["Glow frequency"],
@@ -4401,7 +4466,8 @@ local ButtonGlowParamters = {
 			min = 0.05,
 			softMin = 0.05,
 			softMax = 2,
-			step = 0.05
+            step = 0.05,
+            order = 2
 		},
 		xOffset = {
 			name = L["X offset"],
@@ -4409,7 +4475,8 @@ local ButtonGlowParamters = {
 			type = "range",
 			softMin = -5,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 3
 		},
 		yOffset = {
 			name = L["Y offset"],
@@ -4417,7 +4484,8 @@ local ButtonGlowParamters = {
 			type = "range",
 			softMin = -5,
 			softMax = 5,
-			step = 1
+            step = 1,
+            order = 4
 		},
 		frameLevel = {
 			name = L["Frame level"],
@@ -4427,7 +4495,8 @@ local ButtonGlowParamters = {
 			softMax = 20,
 			min = 0,
 			max = 10000,
-			step = 1
+            step = 1,
+            order = 5
 		}
 	}
 }
