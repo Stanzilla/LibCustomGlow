@@ -4416,7 +4416,8 @@ function lib.ButtonGlow_Start(r,options)
 			throttle = 0.01
     end
     local xOffset = options.xOffset or 0
-	local yOffset = options.yOffset or 0
+    local yOffset = options.yOffset or 0
+    local color = options.useGlowColor and options.color or nil
 
 	if r._ButtonGlow then
 		local f = r._ButtonGlow
@@ -4432,7 +4433,7 @@ function lib.ButtonGlow_Start(r,options)
 			f.animIn:Play()
 		end
 
-		if not(options.color) then
+        if not(color) then
 			for texture in pairs(ButtonGlowTextures) do
 				f[texture]:SetDesaturated(nil)
 				f[texture]:SetVertexColor(1,1,1)
@@ -4440,7 +4441,7 @@ function lib.ButtonGlow_Start(r,options)
 				updateAlphaAnim(f, 1)
 			end
 			f.color = false
-		else
+        else
 			for texture in pairs(ButtonGlowTextures) do
 				f[texture]:SetDesaturated(1)
 				f[texture]:SetVertexColor(color[1],color[2],color[3])
@@ -4513,12 +4514,19 @@ local ButtonGlowParamters = {
     type = "group",
     order = 1,
 	args = {
+        useGlowColor = {
+			name = L["Use Glow Color"],
+			desc = L["Color of Blizzard glow"],
+            type = "toggle",
+            order = 1,
+            default = false
+        },
 		color = {
 			name = L["Color"],
 			desc = L["Color of Blizzard glow"],
             type = "color",
-            order = 1,
-            default = nil
+            order = 2,
+            default = {1,1,1,1}
 		},
 		frequency = {
 			name = L["Glow frequency"],
@@ -4528,7 +4536,7 @@ local ButtonGlowParamters = {
 			softMin = 0.05,
 			softMax = 2,
             step = 0.05,
-            order = 2,
+            order = 3,
             default = .25
 		},
 		xOffset = {
@@ -4538,7 +4546,7 @@ local ButtonGlowParamters = {
 			softMin = -5,
 			softMax = 5,
             step = 1,
-            order = 3,
+            order = 4,
             default = 0
 		},
 		yOffset = {
@@ -4548,7 +4556,7 @@ local ButtonGlowParamters = {
 			softMin = -5,
 			softMax = 5,
             step = 1,
-            order = 4,
+            order = 5,
             default = 0
 		},
 		frameLevel = {
@@ -4560,7 +4568,7 @@ local ButtonGlowParamters = {
 			min = 0,
 			max = 10000,
             step = 1,
-            order = 5,
+            order = 6,
             default = 8
 		}
 	}
