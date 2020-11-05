@@ -3541,7 +3541,7 @@ local function PixelUpdateInfo(f)
 		if not((width + height) > 0) then
 				return false
 		end
-		f.inf.length = min(f.inf.defaultLength, width - 2, height - 2)
+		f.inf.length = math.min(f.inf.defaultLength, width - 2, height - 2)
 		local perimeter = 2*(width + height)
 		f.inf.p = {
 			[1] = (width - f.inf.length) / perimeter,
@@ -3818,8 +3818,8 @@ function lib.PixelGlow_Start(r,options)
 
 	local width,height = f:GetSize()
 
-	options.length = options.length or min(math.floor((width + height) / options.N * 1.25))
-	local length = min(options.length, width - 2, height - 2)
+	options.length = options.length or math.min(math.floor((width + height) / options.N * 1.25))
+	local length = math.min(options.length, width - 2, height - 2)
 
 	f.timer = f.timer or 0.001
 	f.inf = {
