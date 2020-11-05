@@ -2763,9 +2763,15 @@ local flashF = {
 		flashN = 3
 		},
 	square = {
-		Update = FlashUpdateSquare,
+        Update = FlashUpdateSquare,
+        Set = FlashSetSquare,
 		flashN = 4
-	}
+    },
+    slide = {
+        Update = FlashUpdateSlide,
+        Set = FlashSetSlide,
+        flashN = 2
+    }
 }
 
 
