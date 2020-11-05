@@ -3969,7 +3969,7 @@ local PixelGlowParamters = {
 		},
 		annoyFrequency = {
 			name = L["Annoy frequency"],
-			desc = L["Frequency of annoy Bling if eenabled"],
+			desc = L["Frequency of annoy Bling if enabled"],
 			type = "range",
 			min = 0.05,
 			softMin = 0.25,
