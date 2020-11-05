@@ -4414,15 +4414,17 @@ function lib.ButtonGlow_Start(r,options)
 			throttle = 0.25 / options.frequency * 0.01
 	else
 			throttle = 0.01
-	end
+    end
+    local xOffset = options.xOffset or 0
+	local yOffset = options.yOffset or 0
 
 	if r._ButtonGlow then
 		local f = r._ButtonGlow
 		local width,height = r:GetSize()
 		f:SetFrameLevel(r:GetFrameLevel() + options.frameLevel)
 		f:SetSize(width*1.4 , height*1.4)
-		f:SetPoint("TOPLEFT", r, "TOPLEFT", -width * 0.2, height * 0.2)
-		f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", width * 0.2, -height * 0.2)
+		f:SetPoint("TOPLEFT", r, "TOPLEFT", (-width * 0.2) - xOffset, (height * 0.2) + yOffset)
+		f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", (width * 0.2) + xOffset, (-height * 0.2) - yOffset)
 		f.ants:SetSize(width*1.4*0.85, height*1.4*0.85)
 		AnimIn_OnFinished(f.animIn)
 		if f.animOut:IsPlaying() then
@@ -4460,8 +4462,8 @@ function lib.ButtonGlow_Start(r,options)
 		f:SetParent(r)
 		f:SetFrameLevel(r:GetFrameLevel() + options.frameLevel)
 		f:SetSize(width * 1.4, height * 1.4)
-		f:SetPoint("TOPLEFT", r, "TOPLEFT", -width * 0.2, height * 0.2)
-		f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", width * 0.2, -height * 0.2)
+		f:SetPoint("TOPLEFT", r, "TOPLEFT", (-width * 0.2) - xOffset, (height * 0.2) + yOffset)
+		f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", (width * 0.2) + xOffset, (-height * 0.2) - yOffset)
 		if not(color) then
 			f.color = false
 			for texture in pairs(ButtonGlowTextures) do
