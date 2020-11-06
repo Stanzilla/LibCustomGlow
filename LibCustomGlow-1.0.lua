@@ -2902,10 +2902,11 @@ function lib.Bling(r, options)
 	local template = options.template and blingTemplates[options.template] or blingTemplates.default
 	options = AcquireOptions(options, template)
 
-	local BorderSet = borderF[options.tails.startPoint][options.tails.N].Set
-	local BorderUpdate = borderF[options.tails.startPoint][options.tails.N].Update
-	local BorderGradient = borderF[options.tails.startPoint][options.tails.N].Gradient
-	local tailN = options.noTails and 0 or borderF[options.tails.startPoint][options.tails.N].tailN
+    local border = borderF[options.tails.startPoint][options.tails.N] or borderF[options.tails.startPoint][1]
+	local BorderSet = border.Set
+	local BorderUpdate = border.Update
+	local BorderGradient = border.Gradient
+	local tailN = options.noTails and 0 or border.tailN
 
 	local FlashSet = flashF[options.flash].Set
 	local FlashUpdate = flashF[options.flash].Update
@@ -3066,9 +3067,9 @@ local BlingParamters = {
 					desc = L["Number of tail lines"],
 					type = "select",
 					values = {
-						["1"] = 1,
-						["2"] = 2,
-						["4"] = 4
+                        [1] = 1,
+                        [2] = 2,
+                        [4] = 4
                     },
                     order = 2,
                     default = 1
@@ -3198,10 +3199,11 @@ local function BorderPulseUpdate(self, elapsed)
 
 		if self.inf.tail.mirror then
 			self.inf.tail.startPoint = BorderReverse(self.inf.tail.startPoint, self.inf.N)
-			if self.inf.N == 4 then
-				self.inf.BorderSet = borderF[self.inf.tail.startPoint][self.inf.N].Set
-				self.inf.BorderUpdate = borderF[self.inf.tail.startPoint][self.inf.N].Update
-				self.inf.BorderGradient = borderF[self.inf.tail.startPoint][self.inf.N].Gradient
+            if self.inf.N == 4 then
+                local border = borderF[self.inf.tail.startPoint][self.inf.N] or borderF[self.inf.tail.startPoint][1]
+				self.inf.BorderSet = border.Set
+				self.inf.BorderUpdate = border.Update
+				self.inf.BorderGradient = border.Gradient
 			end
 		else
 			self.inf.tail.clockwise = not(self.inf.tail.clockwise)
@@ -3251,11 +3253,11 @@ function lib.BorderPulse_Start(r, options)
 	local template = options.template and borderPulseTemplates[options.template] or borderPulseTemplates.default
 	options = AcquireOptions(options, template)
 
-
-	local BorderSet = borderF[options.startPoint][options.N].Set
-	local BorderUpdate = borderF[options.startPoint][options.N].Update
-	local BorderGradient = borderF[options.startPoint][options.N].Gradient
-	local tailN = borderF[options.startPoint][options.N].tailN
+    local border = borderF[options.startPoint][options.N] or borderF[options.startPoint][1]
+	local BorderSet = border.Set
+	local BorderUpdate = border.Update
+	local BorderGradient = border.Gradient
+	local tailN = border.tailN
 
 
 	local update = addFrameAndTex(r,options.color,"_BorderPulse",options.key,tailN,options.xOffset,options.yOffset,textureList.white,{0,1,0,1},nil,options.frameLevel)
@@ -3293,10 +3295,11 @@ function lib.BorderPulse_Start(r, options)
 	if f.inf.sign == -1 then
 		if f.inf.tail.mirror then
 			f.inf.tail.startPoint = BorderReverse(f.inf.tail.startPoint, f.inf.N)
-			if f.inf.N == 4 then
-				f.inf.BorderSet = borderF[f.inf.tail.startPoint][f.inf.N].Set
-				f.inf.BorderUpdate = borderF[f.inf.tail.startPoint][f.inf.N].Update
-				f.inf.BorderGradient = borderF[f.inf.tail.startPoint][f.inf.N].Gradient
+            if f.inf.N == 4 then
+                local border = borderF[f.inf.tail.startPoint][f.inf.N] or borderF[f.inf.tail.startPoint][1]
+				f.inf.BorderSet = border.Set
+				f.inf.BorderUpdate = border.Update
+				f.inf.BorderGradient = border.Gradient
 			end
 		else
 			f.inf.tail.clockwise = not(f.inf.tail.clockwise)
@@ -3354,9 +3357,9 @@ local BorderPulseParamters = {
 			desc = L["Number of tail lines"],
 			type = "select",
 			values = {
-				["1"] = 1,
-				["2"] = 2,
-				["4"] = 4
+                [1] = 1,
+                [2] = 2,
+                [4] = 4
             },
             order = 1,
             default = 1
