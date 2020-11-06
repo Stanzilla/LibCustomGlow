@@ -1485,7 +1485,7 @@ local function BorderGradient1LineCenter(f, progress, elapsed)
 
 	local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2) / 4
 	if inf.tail.mirror then
-		local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2) / 2
+		local cornerP = inf.tail.size1 / (inf.tail.size1 + inf.tail.size2) / 2 -- TODO: fix shadowed variable
 		if progress < cornerP then
 			local stageProg = progress / cornerP
 			if inf.tail.startPoint == "TOP" then
