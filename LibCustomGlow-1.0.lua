@@ -197,6 +197,22 @@ lib.GetGlows = function()
 	return DeepCopy(GlowList)
 end
 
+local function getDefaults(glowType)
+	local function recurse(settings, dest)
+		for k, v in pairs(settings) do
+			if v.default ~= nil then
+				dest[k] = v.default
+			end
+			if v.args and v.type == "group" then
+				dest[k] = {}
+				recurse(v.args, dest[k])
+			end
+		end
+	end
+	local options = {}
+	recurse(GlowList[glowType].args, options)
+	return options
+end
 
 ---- Border Internal Funcitons ----
 
@@ -2872,30 +2888,7 @@ local function BlingUpdate(self, elapsed)
 	self.timer = progress
 end
 
-local blingTemplates = {
-	default = {
-		flash = "split",
-		startPoint = "TOPLEFT",
-		color = {0.95, 0.95, 0.95, 0.85},
-		gradient = {{1, .75, .75, 1}, {.75, 1, .75, 1}, {.75, .75, 1, 1}},
-		gradientFrequency = 0.7,
-		noTails = false,
-		sine = true,
-		tails = {
-			th = 2,
-			N = 1,
-			color = {0.95, 0.95, 0.95, 0.85},
-			startPoint = "BOTTOMLEFT",
-			clockwise = true,
-			mirror = true
-		},
-		reverse = false,
-		duration = 0.65,
-		xOffset = 0,
-		yOffset = 0,
-		frameLevel = 8
-	}
-}
+local blingTemplates = {}
 
 function lib.Bling(r, options)
 	if not r then	return end
@@ -2972,7 +2965,6 @@ end
 local BlingParamters = {
 	name = L["Bling"],
 	desc = L["Creates Bling over target region"],
-	default = blingTemplates.default,
 	start = lib.Bling,
 	stop = function() end,
     type = "group",
@@ -3166,6 +3158,8 @@ local BlingParamters = {
 	}
 }
 GlowList["Bling"] = BlingParamters
+BlingParamters.default = getDefaults("Bling")
+blingTemplates.default = BlingParamters.default
 
 ---- New Glow ----
 local function BorderPulseUpdate(self, elapsed)
@@ -3219,34 +3213,14 @@ local function BorderPulseUpdate(self, elapsed)
 	self.timer = progress
 end
 
-local borderPulseTemplates = {
-	default = {
-		N = 1,
-		startPoint = "BOTTOMLEFT",
-		th = 2,
-		color = {0.95, 0.95, 0.95, 0.85},
-		gradient = {{1, .75, .75, 1}, {.75, 1, .75, 1}, {.75, .75, 1, 1}},
-		gradientFrequency = 0.7,
-		sine = true,
-		clockwise = true,
-		mirror = true,
-		startBling = true,
-		repeatBling = true,
-		annoy = false,
-		annoyFrequency = 0.5,
-		blingOptions = blingTemplates.default,
-		forceStop = false,
-		frequency = 2,
-		xOffset = 0,
-		yOffset = 0,
-		frameLevel = 8
-	}
-}
+local borderPulseTemplates = {}
 
+--[[
 borderPulseTemplates.default.blingOptions.reverse = true
 borderPulseTemplates.default.blingOptions.noTails = true
 borderPulseTemplates.default.blingOptions.sine = false
 borderPulseTemplates.default.blingOptions.duration = 0.5
+]]--
 
 function lib.BorderPulse_Start(r, options)
 	if not r then	return end
@@ -3346,7 +3320,6 @@ end
 local BorderPulseParamters = {
 	name = L["Border Pulse"],
 	desc = L["Creates Border Pulse glow over target region"],
-	default = borderPulseTemplates.default,
 	start = lib.BorderPulse_Start,
 	stop = lib.BorderPulse_Stop,
     type = "group",
@@ -3522,27 +3495,11 @@ local BorderPulseParamters = {
 }
 
 GlowList["Border Pulse Glow"] = BorderPulseParamters
+BorderPulseParamters.default = getDefaults("Border Pulse Glow")
+borderPulseTemplates.default = BorderPulseParamters.default
+
 ---- Pixel Glow ----
-local pixelTemplates = {
-	default = {
-		N = 8,
-		th = 2,
-		color = {0.95, 0.95, 0.32, 1},
-		gradient = {{1, .75, .75, 1}, {.75, 1, .75, 1}, {.75, .75, 1, 1}},
-		gradientFrequency = .75,
-		startBling = false,
-		repeatBling = true,
-		annoy = false,
-		annoyFrequency = 0.5,
-		blingOptions = BlingParamters.default,
-		forceStop = false,
-		fadeDuration = 0.45,
-		frequency = .25,
-		xOffset = 0,
-		yOffset = 0,
-		frameLevel = 8
-	}
-}
+local pixelTemplates = {}
 
 local function PixelUpdateInfo(f)
 	local width, height = f:GetSize()
@@ -3899,7 +3856,6 @@ end
 local PixelGlowParamters = {
 	name = L["Pixel Glow"],
 	desc = L["Creates Pixel glow over target region"],
-	default = pixelTemplates.default,
 	start = lib.PixelGlow_Start,
 	stop = lib.PixelGlow_Stop,
     type = "group",
@@ -4046,6 +4002,8 @@ local PixelGlowParamters = {
 }
 
 GlowList["Pixel Glow"] = PixelGlowParamters
+PixelGlowParamters.default = getDefaults("Pixel Glow")
+pixelTemplates.default = PixelGlowParamters.default
 
 
 ---- Autocast Glow ----
@@ -4082,17 +4040,7 @@ local function acUpdate(self,elapsed)
     end
 end
 
-local autoCastTemplates = {
-	default = {
-		color = {0.95,0.95,0.32,1},
-		N = 4,
-		frequency = 0.125,
-		scale = 1,
-		xOffset = 0,
-		yOffset = 0,
-		frameLevel = 8
-	}
-}
+local autoCastTemplates = {}
 
 function lib.AutoCastGlow_Start(r,options)
 	if not r then return end
@@ -4131,7 +4079,6 @@ end
 local AutoCastParamters = {
 	name = L["AutoCast Glow"],
 	desc = L["Creates AutoCast glow over target region"],
-	default = autoCastTemplates.default,
 	start = lib.AutoCastGlow_Start,
 	stop = lib.AutoCastGlow_Stop,
     type = "group",
@@ -4212,6 +4159,8 @@ local AutoCastParamters = {
 }
 
 GlowList["AutoCast Glow"] = AutoCastParamters
+AutoCastParamters.default = getDefaults("AutoCast Glow")
+autoCastTemplates.default = AutoCastParamters.default
 
 
 ---- Action Button Glow ----
@@ -4402,15 +4351,7 @@ end
 
 local ButtonGlowTextures = {["spark"] = true,["innerGlow"] = true,["innerGlowOver"] = true,["outerGlow"] = true,["outerGlowOver"] = true,["ants"] = true}
 
-local buttonGlowTemplates = {
-	default = {
-		color = nil,
-		frequency = 0.25,
-		xOffset = 0,
-		yOffset = 0,
-		frameLevel = 8
-	}
-}
+local buttonGlowTemplates = {}
 
 function lib.ButtonGlow_Start(r,options)
 	if not r then return end
@@ -4517,7 +4458,6 @@ end
 local ButtonGlowParamters = {
 	name = L["Blizzard Glow"],
 	desc = L["Creates Blizzard glow over target region"],
-	default = buttonGlowTemplates.default,
 	start = lib.ButtonGlow_Start,
 	stop = lib.ButtonGlow_Stop,
     type = "group",
@@ -4584,3 +4524,5 @@ local ButtonGlowParamters = {
 }
 
 GlowList["Button Glow"] = ButtonGlowParamters
+ButtonGlowParamters.default = getDefaults("Button Glow")
+buttonGlowTemplates.default = ButtonGlowParamters.default
