@@ -3913,7 +3913,7 @@ local PixelGlowParamters = {
 			softMax = 14,
             step = 1,
             order = 1,
-            default = 2
+            default = 8
 		},
 		th = {
 			name = L["Line thickness"],
@@ -3954,7 +3954,7 @@ local PixelGlowParamters = {
 			desc = L["Show Bling on first application of glow"],
             type = "toggle",
             order = 6,
-            default = true
+            default = false
 		},
 		repeatBling = {
 			name = L["Repeat Bling"],
@@ -4008,7 +4008,7 @@ local PixelGlowParamters = {
 			softMax = 2,
             step = 0.05,
             order = 12,
-            default = -0.55
+            default = .25
 		},
 		xOffset = {
 			name = L["X offset"],
