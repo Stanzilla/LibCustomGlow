@@ -2968,7 +2968,7 @@ local BlingParamters = {
 	start = lib.Bling,
 	stop = function() end,
     type = "group",
-    order = 1,
+    order = 30,
 	args = {
 		flash = {
 			name = L["Flash"],
@@ -3038,11 +3038,60 @@ local BlingParamters = {
             order = 7,
             default = true
 		},
-		tails = {
+		reverse = {
+			name = L["Reverse"],
+			desc = L["Reverses Bling progress"],
+            type = "toggle",
+            order = 8,
+            default = false
+		},
+		duration = {
+			name = L["Duration"],
+			desc = L["Bling duration in seconds"],
+			type = "range",
+			min = 0.05,
+			softMax = 1,
+            step = 0.05,
+            order = 9,
+            default = 0.65
+		},
+		xOffset = {
+			name = L["X offset"],
+			desc = L["X offset"],
+			type = "range",
+			softMin = -5,
+			softMax = 5,
+            step = 1,
+            order = 10,
+            default = 0
+		},
+		yOffset = {
+			name = L["Y offset"],
+			desc = L["Y offset"],
+			type = "range",
+			softMin = -5,
+			softMax = 5,
+            step = 1,
+            order = 11,
+            default = 0
+		},
+		frameLevel = {
+			name = L["Frame level"],
+			desc = L["Glow frame level"],
+			type = "range",
+			softMin = 1,
+			softMax = 20,
+			min = 0,
+			max = 10000,
+            step = 1,
+            order = 12,
+            default = 8
+        },
+        tails = {
 			name = L["Tail parameters"],
 			desc = L["Parameters of tail lines if enabled"],
             type = "group",
-            order = 8,
+            order = 13,
 			args = {
 				th = {
 					name = L["Tail thickness"],
@@ -3106,55 +3155,6 @@ local BlingParamters = {
 				}
 			}
 		},
-		reverse = {
-			name = L["Reverse"],
-			desc = L["Reverses Bling progress"],
-            type = "toggle",
-            order = 9,
-            default = false
-		},
-		duration = {
-			name = L["Duration"],
-			desc = L["Bling duration in seconds"],
-			type = "range",
-			min = 0.05,
-			softMax = 1,
-            step = 0.05,
-            order = 10,
-            default = 0.65
-		},
-		xOffset = {
-			name = L["X offset"],
-			desc = L["X offset"],
-			type = "range",
-			softMin = -5,
-			softMax = 5,
-            step = 1,
-            order = 11,
-            default = 0
-		},
-		yOffset = {
-			name = L["Y offset"],
-			desc = L["Y offset"],
-			type = "range",
-			softMin = -5,
-			softMax = 5,
-            step = 1,
-            order = 12,
-            default = 0
-		},
-		frameLevel = {
-			name = L["Frame level"],
-			desc = L["Glow frame level"],
-			type = "range",
-			softMin = 1,
-			softMax = 20,
-			min = 0,
-			max = 10000,
-            step = 1,
-            order = 13,
-            default = 8
-		}
 	}
 }
 GlowList["Bling"] = BlingParamters
@@ -3441,7 +3441,6 @@ local BorderPulseParamters = {
             order = 13,
             default = 0.5
 		},
-		blingOptions = BlingParamters,
 		forceStop = {
 			name = L["Force stop"],
 			desc = L["Stops glow immediately without waiting for period end"],
@@ -3490,7 +3489,8 @@ local BorderPulseParamters = {
             step = 1,
             order = 18,
             default = 8
-		}
+        },
+        blingOptions = BlingParamters
 	}
 }
 
@@ -3937,7 +3937,6 @@ local PixelGlowParamters = {
             order = 9,
             default = .5
 		},
-		blingOptions = BlingParamters,
 		forceStop = {
 			name = L["Force stop"],
 			desc = L["Stops glow immediately without waiting for fade"],
@@ -3997,7 +3996,8 @@ local PixelGlowParamters = {
             step = 1,
             order = 15,
             default = 8
-		}
+        },
+        blingOptions = BlingParamters
 	}
 }
 
