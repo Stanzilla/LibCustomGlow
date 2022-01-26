@@ -598,11 +598,13 @@ end
 
 local ButtonGlowTextures = {["spark"] = true,["innerGlow"] = true,["innerGlowOver"] = true,["outerGlow"] = true,["outerGlowOver"] = true,["ants"] = true}
 
-function lib.ButtonGlow_Start(r,color,frequency,frameLevel)
+function lib.ButtonGlow_Start(r,color,frequency,frameLevel,extraWidth,extraHeight)
     if not r then
         return
     end
 	frameLevel = frameLevel or 8;
+    extraWidth = extraWidth or 0
+    extraHeight = extraHeight or 0
     local throttle
     if frequency and frequency > 0 then
         throttle = 0.25/frequency*0.01
@@ -612,6 +614,8 @@ function lib.ButtonGlow_Start(r,color,frequency,frameLevel)
     if r._ButtonGlow then
         local f = r._ButtonGlow
         local width,height = r:GetSize()
+        width = width + extraWidth
+        height = height + extraHeight
         f:SetFrameLevel(r:GetFrameLevel()+frameLevel)
         f:SetSize(width*1.4 , height*1.4)
         f:SetPoint("TOPLEFT", r, "TOPLEFT", -width * 0.2, height * 0.2)
@@ -650,6 +654,8 @@ function lib.ButtonGlow_Start(r,color,frequency,frameLevel)
         end
         r._ButtonGlow = f
         local width,height = r:GetSize()
+        width = width + extraWidth
+        height = height + extraHeight
         f:SetParent(r)
         f:SetFrameLevel(r:GetFrameLevel()+frameLevel)
         f:SetSize(width * 1.4, height * 1.4)
