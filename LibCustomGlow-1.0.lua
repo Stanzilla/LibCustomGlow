@@ -51,7 +51,7 @@ GlowMaskPool.parent =  GlowParent
 
 local TexPoolResetter = function(pool,tex)
     local maskNum = tex:GetNumMaskTextures()
-    for i = 1, maskNum do
+    for i = maskNum , 1, -1 do
         tex:RemoveMaskTexture(tex:GetMaskTexture(i))
     end
     tex:Hide()
