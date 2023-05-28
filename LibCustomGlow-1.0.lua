@@ -717,31 +717,32 @@ local ProcGlowPool = CreateFramePool("Frame", GlowParent)
 lib.ProcGlowPool = ProcGlowPool
 
 local function InitProcGlow(f)
-    f.ProcStartFlipbook = f:CreateTexture(nil, "ARTWORK")
-    f.ProcStartFlipbook:SetBlendMode("ADD")
-    f.ProcStartFlipbook:SetAtlas("UI-HUD-ActionBar-Proc-Start-Flipbook")
-    f.ProcStartFlipbook:SetAlpha(1)
-    f.ProcStartFlipbook:SetSize(150, 150)
-    f.ProcStartFlipbook:SetPoint("CENTER")
+    f.ProcStart = f:CreateTexture(nil, "ARTWORK")
+    f.ProcStart:SetBlendMode("ADD")
+    f.ProcStart:SetAtlas("UI-HUD-ActionBar-Proc-Start-Flipbook")
+    f.ProcStart:SetAlpha(1)
+    f.ProcStart:SetSize(150, 150)
+    f.ProcStart:SetPoint("CENTER")
 
-    f.ProcLoopFlipbook = f:CreateTexture(nil, "ARTWORK")
-    f.ProcLoopFlipbook:SetAtlas("UI-HUD-ActionBar-Proc-Loop-Flipbook")
-    f.ProcLoopFlipbook:SetAlpha(0)
-    f.ProcLoopFlipbook:SetAllPoints()
+    f.ProcLoop = f:CreateTexture(nil, "ARTWORK")
+    f.ProcLoop:SetAtlas("UI-HUD-ActionBar-Proc-Loop-Flipbook")
+    f.ProcLoop:SetAlpha(0)
+    f.ProcLoop:SetAllPoints()
 
-    f.ProcLoop = f:CreateAnimationGroup()
-    f.ProcLoop:SetLooping("REPEAT")
-    f.ProcLoop:SetToFinalAlpha(true)
+    f.ProcLoopAnim = f:CreateAnimationGroup()
+    f.ProcLoopAnim:SetLooping("REPEAT")
+    f.ProcLoopAnim:SetToFinalAlpha(true)
 
-    local alphaRepeat = f.ProcLoop:CreateAnimation("Alpha")
-    alphaRepeat:SetChildKey("ProcLoopFlipbook")
+    local alphaRepeat = f.ProcLoopAnim:CreateAnimation("Alpha")
+    alphaRepeat:SetChildKey("ProcLoop")
     alphaRepeat:SetFromAlpha(1)
     alphaRepeat:SetToAlpha(1)
     alphaRepeat:SetDuration(.001)
     alphaRepeat:SetOrder(0)
+    f.ProcLoopAnim.alphaRepeat = alphaRepeat
 
-    local flipbookRepeat = f.ProcLoop:CreateAnimation("FlipBook")
-    flipbookRepeat:SetChildKey("ProcLoopFlipbook")
+    local flipbookRepeat = f.ProcLoopAnim:CreateAnimation("FlipBook")
+    flipbookRepeat:SetChildKey("ProcLoop")
     flipbookRepeat:SetDuration(1)
     flipbookRepeat:SetOrder(1)
     flipbookRepeat:SetFlipBookRows(6)
@@ -749,12 +750,13 @@ local function InitProcGlow(f)
     flipbookRepeat:SetFlipBookFrames(30)
     flipbookRepeat:SetFlipBookFrameWidth(0)
     flipbookRepeat:SetFlipBookFrameHeight(0)
+    f.ProcLoopAnim.flipbookRepeat = flipbookRepeat
 
     f.ProcStartAnim = f:CreateAnimationGroup()
     f.ProcStartAnim:SetToFinalAlpha(true)
 
     local flipbookStart = f.ProcStartAnim:CreateAnimation("FlipBook")
-    flipbookStart:SetChildKey("ProcStartFlipbook")
+    flipbookStart:SetChildKey("ProcStart")
     flipbookStart:SetDuration(0.8)
     flipbookStart:SetOrder(1)
     flipbookStart:SetFlipBookRows(5)
@@ -762,69 +764,90 @@ local function InitProcGlow(f)
     flipbookStart:SetFlipBookFrames(25)
     flipbookStart:SetFlipBookFrameWidth(0)
     flipbookStart:SetFlipBookFrameHeight(0)
+    f.ProcStartAnim.flipbookStart = flipbookStart
     f.ProcStartAnim:SetScript("OnFinished", function(self)
-        self:GetParent().ProcLoop:Play()
-        self:GetParent().ProcLoopFlipbook:Show()
+        self:GetParent().ProcLoopAnim:Play()
+        self:GetParent().ProcLoop:Show()
     end)
     f:SetScript("OnHide", function(self)
         if self.ProcStartAnim:IsPlaying() then
             self.ProcStartAnim:Stop()
         end
-        if self.ProcLoop:IsPlaying() then
-            self.ProcLoop:Stop()
+        if self.ProcLoopAnim:IsPlaying() then
+            self.ProcLoopAnim:Stop()
         end
     end)
     f:SetScript("OnShow", function(self)
         if self.startAnim then
-            if not self.ProcStartAnim:IsPlaying() and not self.ProcLoop:IsPlaying() then
-                self.ProcStartFlipbook:Show()
-                self.ProcLoopFlipbook:Hide()
+            if not self.ProcStartAnim:IsPlaying() and not self.ProcLoopAnim:IsPlaying() then
+                self.ProcStart:SetWidth(self:GetWidth() / 42 * 150)
+                self.ProcStart:SetHeight(self:GetHeight() / 42 * 150)
+                self.ProcStart:Show()
+                self.ProcLoop:Hide()
                 self.ProcStartAnim:Play()
             end
         else
-            if not self.ProcLoop:IsPlaying() then
-                self.ProcStartFlipbook:Hide()
-                self.ProcLoopFlipbook:Show()
-                self.ProcLoop:Play()
+            if not self.ProcLoopAnim:IsPlaying() then
+                self.ProcStart:Hide()
+                self.ProcLoop:Show()
+                self.ProcLoopAnim:Play()
             end
         end
     end)
 end
 
-function lib.ProcGlow_Start(r, color, startAnim, frameLevel)
+local ProcGlowDefaults = {
+    frameLevel = 8,
+    color = nil,
+    startAnim = true,
+    xOffset = 0,
+    yOffset = 0,
+    duration = 1,
+    key = ""
+}
+
+function lib.ProcGlow_Start(r, options)
     if not r then
         return
     end
-	frameLevel = frameLevel or 8
+    options = options or {}
+    setmetatable(options, { __index = ProcGlowDefaults })
+    local key = "_ProcGlow" .. options.key
     local f, new
-    if r._ProcGlow then
-        f = r._ProcGlow
+    if r[key] then
+        f = r[key]
     else
         f, new = ProcGlowPool:Acquire()
         if new then
             InitProcGlow(f)
         end
-        r._ProcGlow = f
+        r[key] = f
     end
     local width, height = r:GetSize()
     f:SetParent(r)
-    f:SetFrameLevel(r:GetFrameLevel() + frameLevel)
+    f:SetFrameLevel(r:GetFrameLevel() + options.frameLevel)
     f:SetSize(width * 1.4, height * 1.4)
-    f:SetPoint("TOPLEFT", r, "TOPLEFT", -width * 0.2, height * 0.2)
-    f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", width * 0.2, -height * 0.2)
-    if not color then
-        f.ProcLoopFlipbook:SetDesaturated(nil)
-        f.ProcLoopFlipbook:SetVertexColor(1, 1, 1, 1)
+
+    local xOffset = options.xOffset + width * 0.2
+    local yOffset = options.yOffset + height * 0.2
+    f:SetPoint("TOPLEFT", r, "TOPLEFT", -xOffset, yOffset)
+    f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", xOffset, -yOffset)
+
+    if not options.color then
+        f.ProcLoop:SetDesaturated(nil)
+        f.ProcLoop:SetVertexColor(1, 1, 1, 1)
     else
-        f.ProcLoopFlipbook:SetDesaturated(1)
-        f.ProcLoopFlipbook:SetVertexColor(color[1], color[2], color[3], color[4])
+        f.ProcLoop:SetDesaturated(1)
+        f.ProcLoop:SetVertexColor(options.color[1], options.color[2], options.color[3], options.color[4])
     end
-    f.startAnim = startAnim
+    f.ProcLoopAnim.flipbookRepeat:SetDuration(options.duration)
+    f.startAnim = options.startAnim
     f:Show()
 end
 
-function lib.ProcGlow_Stop(r)
-    local f = r._ProcGlow
+function lib.ProcGlow_Stop(r, key)
+    key = key or ""
+    local f = r["_ProcGlow" .. key]
     if f then
         f:Hide()
         ProcGlowPool:Release(f)
