@@ -713,7 +713,18 @@ lib.stopList["Action Button Glow"] = lib.ButtonGlow_Stop
 
 -- ProcGlow
 
-local ProcGlowPool = CreateFramePool("Frame", GlowParent)
+local function ProcGlowResetter(framePool, frame)
+    frame:Hide()
+    frame:ClearAllPoints()
+    frame:SetScript("OnShow", nil)
+    frame:SetScript("OnHide", nil)
+    local parent = frame:GetParent()
+    if frame.key and parent[frame.key] then
+        parent[frame.key] = nil
+    end
+end
+
+local ProcGlowPool = CreateFramePool("Frame", GlowParent, nil, ProcGlowResetter)
 lib.ProcGlowPool = ProcGlowPool
 
 local function InitProcGlow(f)
@@ -769,6 +780,11 @@ local function InitProcGlow(f)
         self:GetParent().ProcLoopAnim:Play()
         self:GetParent().ProcLoop:Show()
     end)
+
+end
+
+local function SetupProcGlow(f, options)
+    f.key = "_ProcGlow" .. options.key -- for resetter
     f:SetScript("OnHide", function(self)
         if self.ProcStartAnim:IsPlaying() then
             self.ProcStartAnim:Stop()
@@ -794,6 +810,15 @@ local function InitProcGlow(f)
             end
         end
     end)
+    if not options.color then
+        f.ProcLoop:SetDesaturated(nil)
+        f.ProcLoop:SetVertexColor(1, 1, 1, 1)
+    else
+        f.ProcLoop:SetDesaturated(1)
+        f.ProcLoop:SetVertexColor(options.color[1], options.color[2], options.color[3], options.color[4])
+    end
+    f.ProcLoopAnim.flipbookRepeat:SetDuration(options.duration)
+    f.startAnim = options.startAnim
 end
 
 local ProcGlowDefaults = {
@@ -823,25 +848,16 @@ function lib.ProcGlow_Start(r, options)
         end
         r[key] = f
     end
-    local width, height = r:GetSize()
     f:SetParent(r)
     f:SetFrameLevel(r:GetFrameLevel() + options.frameLevel)
-    f:SetSize(width * 1.4, height * 1.4)
 
+    local width, height = r:GetSize()
     local xOffset = options.xOffset + width * 0.2
     local yOffset = options.yOffset + height * 0.2
     f:SetPoint("TOPLEFT", r, "TOPLEFT", -xOffset, yOffset)
     f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", xOffset, -yOffset)
 
-    if not options.color then
-        f.ProcLoop:SetDesaturated(nil)
-        f.ProcLoop:SetVertexColor(1, 1, 1, 1)
-    else
-        f.ProcLoop:SetDesaturated(1)
-        f.ProcLoop:SetVertexColor(options.color[1], options.color[2], options.color[3], options.color[4])
-    end
-    f.ProcLoopAnim.flipbookRepeat:SetDuration(options.duration)
-    f.startAnim = options.startAnim
+    SetupProcGlow(f, options)
     f:Show()
 end
 
@@ -849,7 +865,6 @@ function lib.ProcGlow_Stop(r, key)
     key = key or ""
     local f = r["_ProcGlow" .. key]
     if f then
-        f:Hide()
         ProcGlowPool:Release(f)
     end
 end
