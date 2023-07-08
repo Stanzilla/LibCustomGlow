@@ -811,9 +811,14 @@ local function SetupProcGlow(f, options)
     f:SetScript("OnShow", function(self)
         if self.startAnim then
             if not self.ProcStartAnim:IsPlaying() and not self.ProcLoopAnim:IsPlaying() then
+                --[[
+to future me:
+i wish you'r ok, if you wonder where are this constants coming from, check:
+https://github.com/Gethe/wow-ui-source/blob/eb4459c679a1bd8919cad92934ea83c4f5e77e8b/Interface/FrameXML/ActionButton.lua#L816
+https://github.com/Gethe/wow-ui-source/blob/d8e8ebf572c3b28237cf83e8fc5c0583b5453a2b/Interface/FrameXML/ActionButtonTemplate.xml#L5-L14
+                ]]
                 local width, height = self:GetSize()
                 self.ProcStart:SetSize((width / 42 * 150) / 1.4, (height / 42 * 150) / 1.4)
-                --self.ProcStart:SetHeight(150)
                 self.ProcStart:Show()
                 self.ProcLoop:Hide()
                 self.ProcStartAnim:Play()
