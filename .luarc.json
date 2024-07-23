@@ -1,0 +1,16 @@
+{
+    "runtime.version": "Lua 5.1",
+    "workspace.ignoreDir": [".github", ".vscode"],
+    "diagnostics.globals": [
+        "CreateTexturePool",
+        "CreateFramePool",
+        "AnimateTexCoords",
+        "UIParent",
+        "WOW_PROJECT_ID",
+        "WOW_PROJECT_MAINLINE",
+        "table",
+        "math",
+        "issecurevariable"
+    ],
+    "diagnostics.disable": ["lowercase-global", "deprecated", "need-check-nil"]
+}
