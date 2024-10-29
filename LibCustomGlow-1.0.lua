@@ -6,7 +6,7 @@ https://www.wowace.com/projects/libbuttonglow-1-0
 -- luacheck: globals CreateFromMixins ObjectPoolMixin CreateTexturePool CreateFramePool
 
 local MAJOR_VERSION = "LibCustomGlow-1.0"
-local MINOR_VERSION = 20
+local MINOR_VERSION = 21
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub.") end
 local lib, oldversion = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
@@ -16,7 +16,8 @@ local isRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 local textureList = {
     empty = [[Interface\AdventureMap\BrokenIsles\AM_29]],
     white = [[Interface\BUTTONS\WHITE8X8]],
-    shine = [[Interface\ItemSocketingFrame\UI-ItemSockets]]
+    shine = [[Interface\ItemSocketingFrame\UI-ItemSockets]],
+    stealable = [[Interface\TargetingFrame\UI-TargetingFrame-Stealable]],
 }
 
 local shineCoords = {0.3984375, 0.4453125, 0.40234375, 0.44921875}
@@ -938,3 +939,83 @@ end
 table.insert(lib.glowList, "Proc Glow")
 lib.startList["Proc Glow"] = lib.ProcGlow_Start
 lib.stopList["Proc Glow"] = lib.ProcGlow_Stop
+
+-- stealable glow
+local function StealableGlowResetter(framePool, frame)
+    frame:Hide()
+    frame:ClearAllPoints()
+    local parent = frame:GetParent()
+    if frame.key and parent[frame.key] then
+        parent[frame.key] = nil
+    end
+end
+
+local StealableGlowPool = CreateFramePool("Frame", GlowParent, nil, StealableGlowResetter)
+
+local function InitStealableGlow(f)
+    f.StealableGlow = f:CreateTexture(nil, "ARTWORK")
+    f.StealableGlow:SetBlendMode("ADD")
+    f.StealableGlow:SetTexture(textureList.stealable)
+    f.StealableGlow:SetAllPoints()
+end
+
+local function SetupStealableGlow(f, options)
+    f.key = "_StealableGlow" .. options.key -- for resetter
+    if not options.color then
+        f.StealableGlow:SetDesaturated(nil)
+        f.StealableGlow:SetVertexColor(1, 1, 1, 1)
+    else
+        f.StealableGlow:SetDesaturated(1)
+        f.StealableGlow:SetVertexColor(options.color[1], options.color[2], options.color[3], options.color[4])
+    end
+end
+
+local StealableGlowDefaults = {
+    frameLevel = 8,
+    color = nil,
+    xOffset = 0,
+    yOffset = 0,
+    key = ""
+}
+
+function lib.StealableGlow_Start(r, options)
+    if not r then
+        return
+    end
+    options = options or {}
+    setmetatable(options, { __index = StealableGlowDefaults })
+    local key = "_StealableGlow" .. options.key
+    local f, new
+    if r[key] then
+        f = r[key]
+    else
+        f, new = StealableGlowPool:Acquire()
+        if new then
+            InitStealableGlow(f)
+        end
+        r[key] = f
+    end
+    f:SetParent(r)
+    f:SetFrameLevel(r:GetFrameLevel() + options.frameLevel)
+
+    local width, height = r:GetSize()
+    local xOffset = options.xOffset + width * 0.2
+    local yOffset = options.yOffset + height * 0.2
+    f:SetPoint("TOPLEFT", r, "TOPLEFT", -xOffset, yOffset)
+    f:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", xOffset, -yOffset)
+
+    SetupStealableGlow(f, options)
+    f:Show()
+end
+
+function lib.StealableGlow_Stop(r, key)
+    key = key or ""
+    local f = r["_StealableGlow" .. key]
+    if f then
+        StealableGlowPool:Release(f)
+    end
+end
+
+table.insert(lib.glowList, "Stealable Glow")
+lib.startList["Stealable Glow"] = lib.StealableGlow_Start
+lib.stopList["Stealable Glow"] = lib.StealableGlow_Stop
