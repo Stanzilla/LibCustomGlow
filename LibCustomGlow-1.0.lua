@@ -725,11 +725,8 @@ function lib.ButtonGlow_Start(r,color,frequency,frameLevel)
 
         f.animIn:Play()
 
-        if Masque and Masque.UpdateSpellAlert and (not r.overlay or not issecurevariable(r, "overlay")) then
-            local old_overlay = r.overlay
-            r.overlay = f
-            Masque:UpdateSpellAlert(r)
-            r.overlay = old_overlay
+        if Masque and Masque.UpdateSpellAlert then
+            Masque:UpdateSpellAlert(r, f)
         end
     end
 end
