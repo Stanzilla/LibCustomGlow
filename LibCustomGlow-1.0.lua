@@ -151,7 +151,14 @@ local function addFrameAndTex(r,color,name,key,N,xOffset,yOffset,texture,texCoor
                 f.textures[i]:SetBlendMode("ADD")
             end
         end
-        f.textures[i]:SetVertexColor(color[1],color[2],color[3],color[4])
+        -- Handle both array format {r,g,b,a} and Color objects (for WoW 12.0 secret values)
+        if type(color) == "table" and color.GetRGBA then
+            -- Color object from C_UnitAuras.GetAuraDispelTypeColor
+            f.textures[i]:SetVertexColor(color:GetRGBA())
+        else
+            -- Traditional array format
+            f.textures[i]:SetVertexColor(color[1],color[2],color[3],color[4])
+        end
         f.textures[i]:Show()
     end
     while #f.textures>N do
@@ -685,7 +692,13 @@ function lib.ButtonGlow_Start(r,color,frequency,frameLevel)
         else
             for texture in pairs(ButtonGlowTextures) do
                 f[texture]:SetDesaturated(1)
-                f[texture]:SetVertexColor(color[1],color[2],color[3])
+                -- Handle both array format and Color objects
+                if type(color) == "table" and color.GetRGBA then
+                    local r, g, b = color:GetRGBA()
+                    f[texture]:SetVertexColor(r, g, b)
+                else
+                    f[texture]:SetVertexColor(color[1],color[2],color[3])
+                end
                 local alpha = math.min(f[texture]:GetAlpha()/noZero(f.color and f.color[4] or 1)*color[4], 1)
                 f[texture]:SetAlpha(alpha)
                 updateAlphaAnim(f,color and color[4] or 1)
@@ -717,7 +730,13 @@ function lib.ButtonGlow_Start(r,color,frequency,frameLevel)
             f.color = color
             for texture in pairs(ButtonGlowTextures) do
                 f[texture]:SetDesaturated(1)
-                f[texture]:SetVertexColor(color[1],color[2],color[3])
+                -- Handle both array format and Color objects
+                if type(color) == "table" and color.GetRGBA then
+                    local r, g, b = color:GetRGBA()
+                    f[texture]:SetVertexColor(r, g, b)
+                else
+                    f[texture]:SetVertexColor(color[1],color[2],color[3])
+                end
             end
         end
         f.throttle = throttle
