@@ -6,7 +6,7 @@ https://www.wowace.com/projects/libbuttonglow-1-0
 -- luacheck: globals CreateFromMixins ObjectPoolMixin CreateTexturePool CreateFramePool
 
 local MAJOR_VERSION = "LibCustomGlow-1.0"
-local MINOR_VERSION = 21
+local MINOR_VERSION = 22
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub.") end
 local lib, oldversion = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
@@ -153,10 +153,8 @@ local function addFrameAndTex(r,color,name,key,N,xOffset,yOffset,texture,texCoor
         end
         -- Handle both array format {r,g,b,a} and Color objects (for WoW 12.0 secret values)
         if type(color) == "table" and color.GetRGBA then
-            -- Color object from C_UnitAuras.GetAuraDispelTypeColor
             f.textures[i]:SetVertexColor(color:GetRGBA())
         else
-            -- Traditional array format
             f.textures[i]:SetVertexColor(color[1],color[2],color[3],color[4])
         end
         f.textures[i]:Show()
@@ -692,7 +690,6 @@ function lib.ButtonGlow_Start(r,color,frequency,frameLevel)
         else
             for texture in pairs(ButtonGlowTextures) do
                 f[texture]:SetDesaturated(1)
-                -- Handle both array format and Color objects
                 if type(color) == "table" and color.GetRGBA then
                     local r, g, b = color:GetRGBA()
                     f[texture]:SetVertexColor(r, g, b)
@@ -730,7 +727,6 @@ function lib.ButtonGlow_Start(r,color,frequency,frameLevel)
             f.color = color
             for texture in pairs(ButtonGlowTextures) do
                 f[texture]:SetDesaturated(1)
-                -- Handle both array format and Color objects
                 if type(color) == "table" and color.GetRGBA then
                     local r, g, b = color:GetRGBA()
                     f[texture]:SetVertexColor(r, g, b)
