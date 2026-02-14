@@ -6,7 +6,15 @@ https://www.wowace.com/projects/libbuttonglow-1-0
 -- luacheck: globals CreateFromMixins ObjectPoolMixin CreateTexturePool CreateFramePool
 
 local MAJOR_VERSION = "LibCustomGlow-1.0"
-local MINOR_VERSION = 24
+local MINOR_VERSION = 25
+local _, ns = ...
+local lib
+if ns.LCG then
+    lib = ns.LCG
+else
+    lib = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
+    if not lib then return end
+end
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub.") end
 local lib, oldversion = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
@@ -953,3 +961,6 @@ end
 table.insert(lib.glowList, "Proc Glow")
 lib.startList["Proc Glow"] = lib.ProcGlow_Start
 lib.stopList["Proc Glow"] = lib.ProcGlow_Stop
+
+ns.LCG = lib
+
